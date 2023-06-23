@@ -18,6 +18,7 @@ import de.uni_mannheim.informatik.dws.winter.preprocessing.datatypes.DataType;
 import de.uni_mannheim.informatik.dws.winter.processing.Processable;
 import de.uni_mannheim.informatik.dws.winter.processing.ProcessableCollection;
 import de.uni_mannheim.informatik.dws.winter.similarity.string.LevenshteinSimilarity;
+import de.uni_mannheim.informatik.dws.winter.utils.WinterLogManager;
 import de.uni_mannheim.informatik.dws.winter.webtables.MatchableTableColumn;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -25,6 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
 import org.jgrapht.graph.SimpleDirectedGraph;
+import org.slf4j.Logger;
 
 /**
  * Implementation of a Similarity Flooding Algorithm for structured schema matching
@@ -34,6 +36,8 @@ import org.jgrapht.graph.SimpleDirectedGraph;
  * @author Robin Schumacher (info@robin-schumacher.com)
  */
 public class SimilarityFloodingAlgorithm implements MatchingAlgorithm<MatchableTableColumn, MatchableTableColumn> {
+
+    private static final Logger logger = WinterLogManager.getLogger();
 
     private final SimilarityFloodingSchema schemaA;
     private final SimilarityFloodingSchema schemaB;
@@ -74,25 +78,24 @@ public class SimilarityFloodingAlgorithm implements MatchingAlgorithm<MatchableT
         List<Pair<Pair<SFLiteral, SFLiteral>, Double>> engagements = filterStableMarriage(ipg);
 
         result = new ProcessableCollection<>();
-        System.out.println("Final result after filter application:");
+        logger.trace("Final result after filter application:");
         for (Pair<Pair<SFLiteral, SFLiteral>, Double> entry : engagements) {
             Pair<SFLiteral, SFLiteral> pair = entry.getFirst();
             if (pair.getFirst() == null) {
-                System.out.println("no_match_found");
+                logger.trace("no_match_found");
             } else {
-                System.out.println(pair.getFirst());
+                logger.trace(pair.getFirst().toString());
             }
-            System.out.println("<->");
+            logger.trace("<->");
             if (pair.getSecond() == null) {
-                System.out.println("no_match_found");
+                logger.trace("no_match_found");
             } else {
-                System.out.println(pair.getSecond());
+                logger.trace(pair.getSecond().toString());
             }
-            System.out.println();
+            logger.trace("\n");
 
             // CHECK
             if (pair.getFirst() == null || pair.getSecond() == null || !schemaAMap.containsKey(pair.getFirst().getValue()) || !schemaBMap.containsKey(pair.getSecond().getValue())) {
-                System.out.println("CORRESPONDENCE SKIPPED!!");
                 continue;
             }
 
@@ -108,9 +111,7 @@ public class SimilarityFloodingAlgorithm implements MatchingAlgorithm<MatchableT
         initEngagementsSchemas(ipg, schema1Engagements, schema2Engagements);
 
         boolean change = true;
-        int step = 0;
         while (change) {
-            step += 1;
             change = false;
 
             for (Entry<SFLiteral, Pair<SFLiteral, List<Pair<Double, SFLiteral>>>> entry : schema1Engagements.entrySet()) {
@@ -196,7 +197,7 @@ public class SimilarityFloodingAlgorithm implements MatchingAlgorithm<MatchableT
             boolean cont = similarityFloodingStep(ipg);
 
             if (!cont) {
-                System.out.println("Terminated: vector has length less than epsilon");
+                logger.trace("Terminated: vector has length less than epsilon");
                 break;
             }
         }
@@ -507,7 +508,13 @@ public class SimilarityFloodingAlgorithm implements MatchingAlgorithm<MatchableT
             if (!nodeFromA.getValue().contains("&")) {
                 for (SFNode nodeFromB : schemaGraphB.vertexSet()) {
                     if (!nodeFromB.getValue().contains("&")) {
-                        double sim = levenshtein.calculate(nodeFromA.getValue(), nodeFromB.getValue());
+
+                        double sim;
+                        if (nodeFromA.getValue().equals("string") && nodeFromB.getValue().equals("numeric") || nodeFromA.getValue().equals("numeric") && nodeFromB.getValue().equals("string")) {
+                            sim = 0.0;
+                        } else {
+                            sim = levenshtein.calculate(nodeFromA.getValue(), nodeFromB.getValue());
+                        }
 
                         if (!simMap.containsKey(nodeFromA)) {
                             simMap.put(nodeFromA, new HashMap<>());

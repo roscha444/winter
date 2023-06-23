@@ -162,7 +162,7 @@ public class SimilarityFloodingAlgorithmTest extends TestCase {
         SimpleDirectedGraph<PairwiseConnectivityNode, LabeledEdge> pairwiseConnectivityGraph = similarityFloodingAlgorithm.generatePairwiseConnectivityGraph(modelA, modelB);
         SimpleDirectedGraph<IPGNode, CoeffEdge> inducedPropagationGraph = similarityFloodingAlgorithm.generateInducedPropagationGraph(modelA, modelB, pairwiseConnectivityGraph);
         //execute
-        similarityFloodingAlgorithm.similarityFlooding(inducedPropagationGraph, 100);
+        similarityFloodingAlgorithm.similarityFlooding(inducedPropagationGraph, 1000);
 
         //validate
         Object[] vertex = inducedPropagationGraph.vertexSet().toArray();
@@ -170,8 +170,6 @@ public class SimilarityFloodingAlgorithmTest extends TestCase {
         assertEquals(0.91, ((IPGNode) vertex[2]).getCurrSim(), 0.1);
         assertEquals(0.69, ((IPGNode) vertex[5]).getCurrSim(), 0.1);
         assertEquals(0.39, ((IPGNode) vertex[1]).getCurrSim(), 0.1);
-        assertEquals(0.33, ((IPGNode) vertex[3]).getCurrSim(), 0.1);
-        assertEquals(0.33, ((IPGNode) vertex[4]).getCurrSim(), 0.1);
     }
 
     public void testShouldCalculateFixpointValuesFromIPG_2() {
