@@ -5,12 +5,19 @@ package de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf;
  *
  * @author Robin Schumacher (info@robin-schumacher.com)
  */
-public abstract class SFNode {
+public class SFNode {
 
     protected String value;
 
-    public SFNode(String value) {
+    private final SFNodeType type;
+
+    public SFNode(String value, SFNodeType type) {
         this.value = value;
+        this.type = type;
+    }
+
+    public SFNodeType getType() {
+        return type;
     }
 
     public String getValue() {
