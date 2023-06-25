@@ -2,6 +2,9 @@ package de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.ipg;
 
 import org.jgrapht.graph.DefaultEdge;
 
+/**
+ * @author Robin Schumacher (info@robin-schumacher.com
+ */
 public class CoeffEdge extends DefaultEdge {
 
     double coeff;

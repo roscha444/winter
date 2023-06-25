@@ -1,5 +1,8 @@
 package de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.pcg;
 
+/**
+ * @author Robin Schumacher (info@robin-schumacher.com
+ */
 public class PairwiseConnectivityNode {
 
     SFNode a;

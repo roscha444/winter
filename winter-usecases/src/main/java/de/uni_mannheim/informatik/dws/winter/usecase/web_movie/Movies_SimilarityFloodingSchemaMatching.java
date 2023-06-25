@@ -31,20 +31,10 @@ import java.util.HashMap;
 import java.util.List;
 import org.slf4j.Logger;
 
+/**
+ * @author Robin Schumacher (info@robin-schumacher.com
+ */
 public class Movies_SimilarityFloodingSchemaMatching {
-
-    /*
-     * Logging Options:
-     * 		default: 	level INFO	- console
-     * 		trace:		level TRACE     - console
-     * 		infoFile:	level INFO	- console/file
-     * 		traceFile:	level TRACE	- console/file
-     *
-     * To set the log level to trace and write the log to winter.log and console,
-     * activate the "traceFile" logger as follows:
-     *     private static final Logger logger = WinterLogManager.activateLogger("traceFile");
-     *
-     */
 
     private static final Logger logger = WinterLogManager.activateLogger("default");
 

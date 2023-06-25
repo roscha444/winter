@@ -2,6 +2,9 @@ package de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.ipg;
 
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.pcg.PairwiseConnectivityNode;
 
+/**
+ * @author Robin Schumacher (info@robin-schumacher.com
+ */
 public class IPGNode {
 
     PairwiseConnectivityNode pairwiseConnectivityNode;
