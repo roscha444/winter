@@ -58,6 +58,7 @@ public class Movies_SimilarityFloodingSchemaMatching {
         SimilarityFloodingSchema schema2 = getSimilarityFloodingSchema(data2);
 
         SimilarityFloodingAlgorithm similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm(schema2, schema1);
+        similarityFloodingAlgorithm.setRemoveOid(true);
         similarityFloodingAlgorithm.run();
         Processable<Correspondence<MatchableTableColumn, MatchableTableColumn>> correspondences = similarityFloodingAlgorithm.getResult();
 
