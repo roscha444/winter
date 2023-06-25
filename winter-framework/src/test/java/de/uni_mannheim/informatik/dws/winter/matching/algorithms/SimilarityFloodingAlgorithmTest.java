@@ -1,5 +1,7 @@
 package de.uni_mannheim.informatik.dws.winter.matching.algorithms;
 
+import static junit.framework.TestCase.assertEquals;
+
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.SimilarityFloodingSchema;
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.ipg.CoeffEdge;
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.ipg.IPGNode;
@@ -16,16 +18,17 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
-import junit.framework.TestCase;
 import org.jgrapht.graph.SimpleDirectedGraph;
+import org.junit.Test;
 
 /**
  * Test for {@link SimilarityFloodingAlgorithm}
  *
  * @author Robin Schumacher (info@robin-schumacher.com)
  */
-public class SimilarityFloodingAlgorithmTest extends TestCase {
+public class SimilarityFloodingAlgorithmTest {
 
+    @Test
     public void testGraphShouldBeCreatedFromSchema() {
         // prepare
         SimilarityFloodingAlgorithm similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm(null, null);
@@ -48,6 +51,7 @@ public class SimilarityFloodingAlgorithmTest extends TestCase {
         assertEquals(15, schemaGraphA.vertexSet().size());
     }
 
+    @Test
     public void testPairWiseConnectivityGraphShouldBeCreatedFromGraph() {
         // prepare
         SimilarityFloodingAlgorithm similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm(null, null);
@@ -87,6 +91,7 @@ public class SimilarityFloodingAlgorithmTest extends TestCase {
         assertEquals(6, pairwiseConnectivityGraph.vertexSet().size());
     }
 
+    @Test
     public void testInducedPropagationGraphShouldBeCreatedFromPCG() {
         // prepare
         SimilarityFloodingAlgorithm similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm(null, null);
@@ -127,6 +132,7 @@ public class SimilarityFloodingAlgorithmTest extends TestCase {
         assertEquals(6, inducedPropagationGraph.vertexSet().size());
     }
 
+    @Test
     public void testShouldCalculateFixpointValuesFromIPG_1() {
         // prepare
         SimilarityFloodingAlgorithm similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm(null, null);
@@ -171,6 +177,7 @@ public class SimilarityFloodingAlgorithmTest extends TestCase {
         assertEquals(0.39, ((IPGNode) vertex[1]).getCurrSim(), 0.1);
     }
 
+    @Test
     public void testShouldCalculateFixpointValuesFromIPG_2() {
         // prepare
         List<MatchableTableColumn> columnsSchemaOne = new ArrayList<>();
@@ -205,15 +212,57 @@ public class SimilarityFloodingAlgorithmTest extends TestCase {
         // validate
         HashMap<String, HashMap<String, Double>> nodeSimMap = getResultMap(similarityFloodingAlgorithm);
 
-        // TODO check results here!
-        assertEquals(1.0, nodeSimMap.get("Personnel").get("Employee"), 0.1);
-        assertEquals(0.6, nodeSimMap.get("Pno").get("EmpNo"), 0.1);
-        assertEquals(1.07, nodeSimMap.get("Pno").get("EmpName"), 0.1);
-        assertEquals(0.07, nodeSimMap.get("Born").get("Birthdate"), 0.1);
-        assertEquals(0.15, nodeSimMap.get("numeric").get("string"), 0.1);
-        assertEquals(0.06, nodeSimMap.get("date").get("date"), 0.1);
+        assertEquals(0.43, nodeSimMap.get("Personnel").get("Employee"), 0.1);
+        assertEquals(0.035, nodeSimMap.get("Pno").get("EmpName"), 0.1);
+        assertEquals(0.035, nodeSimMap.get("Born").get("Birthdate"), 0.1);
+        assertEquals(0.03, nodeSimMap.get("numeric").get("string"), 0.1);
+        assertEquals(0.03, nodeSimMap.get("date").get("date"), 0.1);
     }
 
+    @Test
+    public void testShouldCalculateFixpointValuesFromIPG_2_REMOVE_OID() {
+        // prepare
+        List<MatchableTableColumn> columnsSchemaOne = new ArrayList<>();
+        MatchableTableColumn pno = new MatchableTableColumn(0, 0, "Pno", DataType.numeric);
+        columnsSchemaOne.add(pno);
+        MatchableTableColumn pname = new MatchableTableColumn(0, 1, "Pname", DataType.string);
+        columnsSchemaOne.add(pname);
+        MatchableTableColumn dept = new MatchableTableColumn(0, 2, "Dept", DataType.string);
+        columnsSchemaOne.add(dept);
+        MatchableTableColumn born = new MatchableTableColumn(0, 3, "Born", DataType.date);
+        columnsSchemaOne.add(born);
+
+        SimilarityFloodingSchema schema1 = new SimilarityFloodingSchema("Personnel", columnsSchemaOne);
+
+        List<MatchableTableColumn> columnsSchemaTwo = new ArrayList<>();
+        MatchableTableColumn empNo = new MatchableTableColumn(1, 0, "EmpNo", DataType.numeric);
+        columnsSchemaTwo.add(empNo);
+        MatchableTableColumn empName = new MatchableTableColumn(1, 1, "EmpName", DataType.string);
+        columnsSchemaTwo.add(empName);
+        MatchableTableColumn deptNo = new MatchableTableColumn(1, 2, "DepNo", DataType.numeric);
+        columnsSchemaTwo.add(deptNo);
+        MatchableTableColumn birthdate = new MatchableTableColumn(1, 3, "Birthdate", DataType.date);
+        columnsSchemaTwo.add(birthdate);
+
+        SimilarityFloodingSchema schema2 = new SimilarityFloodingSchema("Employee", columnsSchemaTwo);
+
+        SimilarityFloodingAlgorithm similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm(schema1, schema2);
+        similarityFloodingAlgorithm.setRemoveOid(true);
+
+        // run
+        similarityFloodingAlgorithm.run();
+
+        // validate
+        HashMap<String, HashMap<String, Double>> nodeSimMap = getResultMap(similarityFloodingAlgorithm);
+
+        assertEquals(1.0, nodeSimMap.get("Personnel").get("Employee"), 0.1);
+        assertEquals(0.08, nodeSimMap.get("Pno").get("EmpName"), 0.1);
+        assertEquals(0.08, nodeSimMap.get("Born").get("Birthdate"), 0.1);
+        assertEquals(0.07, nodeSimMap.get("numeric").get("string"), 0.1);
+        assertEquals(0.07, nodeSimMap.get("date").get("date"), 0.1);
+    }
+
+    @Test
     public void testShouldRunSimilarityFloodingAlgorithm_1() {
         // prepare
         List<MatchableTableColumn> columnsSchemaOne = new ArrayList<>();
@@ -249,19 +298,65 @@ public class SimilarityFloodingAlgorithmTest extends TestCase {
 
         // validate
         Processable<Correspondence<MatchableTableColumn, MatchableTableColumn>> result = similarityFloodingAlgorithm.getResult();
-        List<Correspondence<MatchableTableColumn, MatchableTableColumn>> resultList = new ArrayList<>(result.get());
 
-        assertEquals(dept, resultList.get(0).getFirstRecord());
-        assertEquals(dept, resultList.get(0).getSecondRecord());
+        HashMap<String, String> resultList = new HashMap<>();
+        for (Correspondence<MatchableTableColumn, MatchableTableColumn> correspondence : result.get()) {
+            resultList.put(correspondence.getFirstRecord().getHeader(), correspondence.getSecondRecord().getHeader());
+        }
 
-        assertEquals(born, resultList.get(1).getFirstRecord());
-        assertEquals(birthdate, resultList.get(1).getSecondRecord());
+        assertEquals(birthdate.getHeader(), resultList.get(born.getHeader()));
+        assertEquals(empName.getHeader(), resultList.get(pno.getHeader()));
+        assertEquals(deptNo.getHeader(), resultList.get(dept.getHeader()));
+        assertEquals(empNo.getHeader(), resultList.get(pname.getHeader()));
+    }
 
-        assertEquals(pname, resultList.get(2).getFirstRecord());
-        assertEquals(salary, resultList.get(2).getSecondRecord());
+    @Test
+    public void testShouldRunSimilarityFloodingAlgorithm_1_REMOVE_OID() {
+        // prepare
+        List<MatchableTableColumn> columnsSchemaOne = new ArrayList<>();
+        MatchableTableColumn pno = new MatchableTableColumn(0, 0, "Pno", DataType.numeric);
+        columnsSchemaOne.add(pno);
+        MatchableTableColumn pname = new MatchableTableColumn(0, 1, "Pname", DataType.string);
+        columnsSchemaOne.add(pname);
+        MatchableTableColumn dept = new MatchableTableColumn(0, 2, "Dept", DataType.string);
+        columnsSchemaOne.add(dept);
+        MatchableTableColumn born = new MatchableTableColumn(0, 3, "Born", DataType.date);
+        columnsSchemaOne.add(born);
 
-        assertEquals(pno, resultList.get(3).getFirstRecord());
-        assertEquals(empName, resultList.get(3).getSecondRecord());
+        SimilarityFloodingSchema schema1 = new SimilarityFloodingSchema("Personnel", columnsSchemaOne);
+
+        List<MatchableTableColumn> columnsSchemaTwo = new ArrayList<>();
+        MatchableTableColumn empNo = new MatchableTableColumn(1, 0, "EmpNo", DataType.numeric);
+        columnsSchemaTwo.add(empNo);
+        MatchableTableColumn empName = new MatchableTableColumn(1, 1, "EmpName", DataType.string);
+        columnsSchemaTwo.add(empName);
+        MatchableTableColumn deptNo = new MatchableTableColumn(1, 2, "DepNo", DataType.numeric);
+        columnsSchemaTwo.add(deptNo);
+        MatchableTableColumn salary = new MatchableTableColumn(1, 3, "Salary", DataType.numeric);
+        columnsSchemaTwo.add(salary);
+        MatchableTableColumn birthdate = new MatchableTableColumn(1, 4, "Birthdate", DataType.date);
+        columnsSchemaTwo.add(birthdate);
+
+        SimilarityFloodingSchema schema2 = new SimilarityFloodingSchema("Employee", columnsSchemaTwo);
+
+        SimilarityFloodingAlgorithm similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm(schema1, schema2);
+        similarityFloodingAlgorithm.setRemoveOid(true);
+
+        // run
+        similarityFloodingAlgorithm.run();
+
+        // validate
+        Processable<Correspondence<MatchableTableColumn, MatchableTableColumn>> result = similarityFloodingAlgorithm.getResult();
+
+        HashMap<String, String> resultList = new HashMap<>();
+        for (Correspondence<MatchableTableColumn, MatchableTableColumn> correspondence : result.get()) {
+            resultList.put(correspondence.getFirstRecord().getHeader(), correspondence.getSecondRecord().getHeader());
+        }
+
+        assertEquals(birthdate.getHeader(), resultList.get(born.getHeader()));
+        assertEquals(empName.getHeader(), resultList.get(pno.getHeader()));
+        assertEquals(deptNo.getHeader(), resultList.get(pname.getHeader()));
+        assertEquals(salary.getHeader(), resultList.get(dept.getHeader()));
     }
 
     private HashMap<String, HashMap<String, Double>> getResultMap(SimilarityFloodingAlgorithm similarityFloodingAlgorithm) {

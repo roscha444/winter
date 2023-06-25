@@ -21,6 +21,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.stream.Collectors;
 import org.jgrapht.graph.SimpleDirectedGraph;
 import org.slf4j.Logger;
 
@@ -49,6 +50,7 @@ public class SimilarityFloodingAlgorithm implements MatchingAlgorithm<MatchableT
     private int maxSteps = 1000;
     private double defaultSim = 0.0;
     private double minSim = 0.00000000000001;
+    private boolean removeOid = false;
 
     public SimilarityFloodingAlgorithm(SimilarityFloodingSchema schemaA, SimilarityFloodingSchema schemaB) {
         this.schemaA = schemaA;
@@ -65,6 +67,11 @@ public class SimilarityFloodingAlgorithm implements MatchingAlgorithm<MatchableT
     public void run() {
         schemaGraphA = createGraphForSchema(schemaA, schemaAMap);
         schemaGraphB = createGraphForSchema(schemaB, schemaBMap);
+
+        if (removeOid) {
+            removeOidFromGraph(schemaGraphA);
+            removeOidFromGraph(schemaGraphB);
+        }
 
         pcg = generatePairwiseConnectivityGraph(schemaGraphA, schemaGraphB);
         ipg = generateInducedPropagationGraph(schemaGraphA, schemaGraphB, pcg);
@@ -98,6 +105,37 @@ public class SimilarityFloodingAlgorithm implements MatchingAlgorithm<MatchableT
             // TODO check what to do with similarityScore!
             result.add(new Correspondence<>(schemaAMap.get(pair.getFirst().getValue()), schemaBMap.get(pair.getSecond().getValue()), 0.0));
         }
+    }
+
+    private SimpleDirectedGraph<SFNode, LabeledEdge> removeOidFromGraph(SimpleDirectedGraph<SFNode, LabeledEdge> graph) {
+
+        List<SFNode> vertexToRemove = new ArrayList<>();
+        List<LabeledEdge> edgeToRemove = new ArrayList<>();
+
+        for (SFNode node : graph.vertexSet()) {
+            if (node.getType().equals(SFNodeType.IDENTIFIER)) {
+                List<LabeledEdge> nameNodeList = graph.outgoingEdgesOf(node).stream().filter(x -> x.getType().equals(LabeledEdgeType.NAME)).collect(Collectors.toList());
+                if (nameNodeList.size() > 0) {
+
+                    SFNode nameNode = graph.getEdgeTarget(nameNodeList.get(0));
+
+                    edgeToRemove.add(graph.getEdge(nameNode, nameNode));
+                    vertexToRemove.add(nameNode);
+
+                    node.setValue(nameNode.getValue());
+                }
+            }
+        }
+
+        for (LabeledEdge edge : edgeToRemove) {
+            graph.removeEdge(edge);
+        }
+
+        for (SFNode node : vertexToRemove) {
+            graph.removeVertex(node);
+        }
+
+        return graph;
     }
 
     private List<Pair<Pair<SFNode, SFNode>, Double>> filterStableMarriage(SimpleDirectedGraph<IPGNode, CoeffEdge> ipg) {
@@ -175,7 +213,7 @@ public class SimilarityFloodingAlgorithm implements MatchingAlgorithm<MatchableT
         for (IPGNode node : ipg.vertexSet()) {
             SFNode nodeA = node.getPairwiseConnectivityNode().getA();
             SFNode nodeB = node.getPairwiseConnectivityNode().getB();
-            if (node.getCurrSim() > minSim && nodeA.getType().equals(SFNodeType.LITERAL) && nodeB.getType().equals(SFNodeType.LITERAL)) {
+            if (node.getCurrSim() > minSim && (removeOid || nodeA.getType().equals(SFNodeType.LITERAL) && nodeB.getType().equals(SFNodeType.LITERAL))) {
                 if (!nodeSimMap.containsKey(nodeA)) {
                     nodeSimMap.put(nodeA, new HashMap<>());
                 }
@@ -357,7 +395,7 @@ public class SimilarityFloodingAlgorithm implements MatchingAlgorithm<MatchableT
         graph.addEdge(tableOidNode, tableTypeNode, new LabeledEdge(LabeledEdgeType.TYPE));
 
         // name edge
-        graph.addEdge(tableNameNode, tableOidNode, new LabeledEdge(LabeledEdgeType.NAME));
+        graph.addEdge(tableOidNode, tableNameNode, new LabeledEdge(LabeledEdgeType.NAME));
         return tableOidNode;
     }
 
@@ -462,6 +500,10 @@ public class SimilarityFloodingAlgorithm implements MatchingAlgorithm<MatchableT
 
     public void setMinSim(double minSim) {
         this.minSim = minSim;
+    }
+
+    public void setRemoveOid(boolean removeOid) {
+        this.removeOid = removeOid;
     }
 
     @Override
