@@ -3,12 +3,11 @@ package de.uni_mannheim.informatik.dws.winter.matching.algorithms;
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.CoeffEdge;
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.IPGNode;
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.LabeledEdge;
-import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.NameEdge;
+import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.LabeledEdgeType;
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.PairwiseConnectivityNode;
-import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.SFIdentifier;
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.SFNode;
+import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.SFNodeType;
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.SimilarityFloodingSchema;
-import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.TypeEdge;
 import de.uni_mannheim.informatik.dws.winter.model.Correspondence;
 import de.uni_mannheim.informatik.dws.winter.preprocessing.datatypes.DataType;
 import de.uni_mannheim.informatik.dws.winter.processing.Processable;
@@ -54,31 +53,31 @@ public class SimilarityFloodingAlgorithmTest extends TestCase {
         SimilarityFloodingAlgorithm similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm(null, null);
 
         SimpleDirectedGraph<SFNode, LabeledEdge> modelA = new SimpleDirectedGraph<>(LabeledEdge.class);
-        SFIdentifier a = new SFIdentifier("a");
+        SFNode a = new SFNode("a", SFNodeType.IDENTIFIER);
         modelA.addVertex(a);
-        SFIdentifier a1 = new SFIdentifier("a1");
+        SFNode a1 = new SFNode("a1", SFNodeType.IDENTIFIER);
         modelA.addVertex(a1);
-        SFIdentifier a2 = new SFIdentifier("a2");
+        SFNode a2 = new SFNode("a2", SFNodeType.IDENTIFIER);
         modelA.addVertex(a2);
 
-        modelA.addEdge(a, a1, new NameEdge());
-        modelA.addEdge(a, a2, new NameEdge());
-        modelA.addEdge(a1, a2, new TypeEdge());
+        modelA.addEdge(a, a1, new LabeledEdge(LabeledEdgeType.NAME));
+        modelA.addEdge(a, a2, new LabeledEdge(LabeledEdgeType.NAME));
+        modelA.addEdge(a1, a2, new LabeledEdge(LabeledEdgeType.TYPE));
 
         SimpleDirectedGraph<SFNode, LabeledEdge> modelB = new SimpleDirectedGraph<>(LabeledEdge.class);
 
-        SFIdentifier b = new SFIdentifier("b");
+        SFNode b = new SFNode("b", SFNodeType.IDENTIFIER);
         modelB.addVertex(b);
 
-        SFIdentifier b1 = new SFIdentifier("b1");
+        SFNode b1 = new SFNode("b1", SFNodeType.IDENTIFIER);
         modelB.addVertex(b1);
 
-        SFIdentifier b2 = new SFIdentifier("b2");
+        SFNode b2 = new SFNode("b2", SFNodeType.IDENTIFIER);
         modelB.addVertex(b2);
 
-        modelB.addEdge(b, b1, new NameEdge());
-        modelB.addEdge(b, b2, new TypeEdge());
-        modelB.addEdge(b2, b1, new TypeEdge());
+        modelB.addEdge(b, b1, new LabeledEdge(LabeledEdgeType.NAME));
+        modelB.addEdge(b, b2, new LabeledEdge(LabeledEdgeType.TYPE));
+        modelB.addEdge(b2, b1, new LabeledEdge(LabeledEdgeType.TYPE));
 
         //execute
         SimpleDirectedGraph<PairwiseConnectivityNode, LabeledEdge> pairwiseConnectivityGraph = similarityFloodingAlgorithm.generatePairwiseConnectivityGraph(modelA, modelB);
@@ -93,31 +92,31 @@ public class SimilarityFloodingAlgorithmTest extends TestCase {
         SimilarityFloodingAlgorithm similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm(null, null);
 
         SimpleDirectedGraph<SFNode, LabeledEdge> modelA = new SimpleDirectedGraph<>(LabeledEdge.class);
-        SFIdentifier a = new SFIdentifier("a");
+        SFNode a = new SFNode("a", SFNodeType.IDENTIFIER);
         modelA.addVertex(a);
-        SFIdentifier a1 = new SFIdentifier("a1");
+        SFNode a1 = new SFNode("a1", SFNodeType.IDENTIFIER);
         modelA.addVertex(a1);
-        SFIdentifier a2 = new SFIdentifier("a2");
+        SFNode a2 = new SFNode("a2", SFNodeType.IDENTIFIER);
         modelA.addVertex(a2);
 
-        modelA.addEdge(a, a1, new NameEdge());
-        modelA.addEdge(a, a2, new NameEdge());
-        modelA.addEdge(a1, a2, new TypeEdge());
+        modelA.addEdge(a, a1, new LabeledEdge(LabeledEdgeType.NAME));
+        modelA.addEdge(a, a2, new LabeledEdge(LabeledEdgeType.NAME));
+        modelA.addEdge(a1, a2, new LabeledEdge(LabeledEdgeType.TYPE));
 
         SimpleDirectedGraph<SFNode, LabeledEdge> modelB = new SimpleDirectedGraph<>(LabeledEdge.class);
 
-        SFIdentifier b = new SFIdentifier("b");
+        SFNode b = new SFNode("b", SFNodeType.IDENTIFIER);
         modelB.addVertex(b);
 
-        SFIdentifier b1 = new SFIdentifier("b1");
+        SFNode b1 = new SFNode("b1", SFNodeType.IDENTIFIER);
         modelB.addVertex(b1);
 
-        SFIdentifier b2 = new SFIdentifier("b2");
+        SFNode b2 = new SFNode("b2", SFNodeType.IDENTIFIER);
         modelB.addVertex(b2);
 
-        modelB.addEdge(b, b1, new NameEdge());
-        modelB.addEdge(b, b2, new TypeEdge());
-        modelB.addEdge(b2, b1, new TypeEdge());
+        modelB.addEdge(b, b1, new LabeledEdge(LabeledEdgeType.NAME));
+        modelB.addEdge(b, b2, new LabeledEdge(LabeledEdgeType.TYPE));
+        modelB.addEdge(b2, b1, new LabeledEdge(LabeledEdgeType.TYPE));
 
         SimpleDirectedGraph<PairwiseConnectivityNode, LabeledEdge> pairwiseConnectivityGraph = similarityFloodingAlgorithm.generatePairwiseConnectivityGraph(modelA, modelB);
         //execute
@@ -133,31 +132,31 @@ public class SimilarityFloodingAlgorithmTest extends TestCase {
         SimilarityFloodingAlgorithm similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm(null, null);
 
         SimpleDirectedGraph<SFNode, LabeledEdge> modelA = new SimpleDirectedGraph<>(LabeledEdge.class);
-        SFIdentifier a = new SFIdentifier("a");
+        SFNode a = new SFNode("a", SFNodeType.IDENTIFIER);
         modelA.addVertex(a);
-        SFIdentifier a1 = new SFIdentifier("a1");
+        SFNode a1 = new SFNode("a1", SFNodeType.IDENTIFIER);
         modelA.addVertex(a1);
-        SFIdentifier a2 = new SFIdentifier("a2");
+        SFNode a2 = new SFNode("a2", SFNodeType.IDENTIFIER);
         modelA.addVertex(a2);
 
-        modelA.addEdge(a, a1, new NameEdge());
-        modelA.addEdge(a, a2, new NameEdge());
-        modelA.addEdge(a1, a2, new TypeEdge());
+        modelA.addEdge(a, a1, new LabeledEdge(LabeledEdgeType.NAME));
+        modelA.addEdge(a, a2, new LabeledEdge(LabeledEdgeType.NAME));
+        modelA.addEdge(a1, a2, new LabeledEdge(LabeledEdgeType.TYPE));
 
         SimpleDirectedGraph<SFNode, LabeledEdge> modelB = new SimpleDirectedGraph<>(LabeledEdge.class);
 
-        SFIdentifier b = new SFIdentifier("b");
+        SFNode b = new SFNode("b", SFNodeType.IDENTIFIER);
         modelB.addVertex(b);
 
-        SFIdentifier b1 = new SFIdentifier("b1");
+        SFNode b1 = new SFNode("b1", SFNodeType.IDENTIFIER);
         modelB.addVertex(b1);
 
-        SFIdentifier b2 = new SFIdentifier("b2");
+        SFNode b2 = new SFNode("b2", SFNodeType.IDENTIFIER);
         modelB.addVertex(b2);
 
-        modelB.addEdge(b, b1, new NameEdge());
-        modelB.addEdge(b, b2, new TypeEdge());
-        modelB.addEdge(b2, b1, new TypeEdge());
+        modelB.addEdge(b, b1, new LabeledEdge(LabeledEdgeType.NAME));
+        modelB.addEdge(b, b2, new LabeledEdge(LabeledEdgeType.TYPE));
+        modelB.addEdge(b2, b1, new LabeledEdge(LabeledEdgeType.TYPE));
 
         SimpleDirectedGraph<PairwiseConnectivityNode, LabeledEdge> pairwiseConnectivityGraph = similarityFloodingAlgorithm.generatePairwiseConnectivityGraph(modelA, modelB);
         SimpleDirectedGraph<IPGNode, CoeffEdge> inducedPropagationGraph = similarityFloodingAlgorithm.generateInducedPropagationGraph(modelA, modelB, pairwiseConnectivityGraph);

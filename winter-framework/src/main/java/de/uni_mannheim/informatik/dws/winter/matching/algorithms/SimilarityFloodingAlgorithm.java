@@ -1,17 +1,13 @@
 package de.uni_mannheim.informatik.dws.winter.matching.algorithms;
 
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.CoeffEdge;
-import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.ColumnEdge;
-import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.DataTypeEdge;
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.IPGNode;
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.LabeledEdge;
-import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.NameEdge;
+import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.LabeledEdgeType;
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.PairwiseConnectivityNode;
-import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.SFIdentifier;
-import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.SFLiteral;
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.SFNode;
+import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.SFNodeType;
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.SimilarityFloodingSchema;
-import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.TypeEdge;
 import de.uni_mannheim.informatik.dws.winter.model.Correspondence;
 import de.uni_mannheim.informatik.dws.winter.model.Pair;
 import de.uni_mannheim.informatik.dws.winter.preprocessing.datatypes.DataType;
@@ -52,7 +48,8 @@ public class SimilarityFloodingAlgorithm implements MatchingAlgorithm<MatchableT
     // Default values for SF
     private double epsilon = 0.000000000000002;
     private int maxSteps = 1000;
-    private double defaultSim = 0.0001;
+    private double defaultSim = 0.0;
+    private double minSim = 0.00000000000001;
 
     public SimilarityFloodingAlgorithm(SimilarityFloodingSchema schemaA, SimilarityFloodingSchema schemaB) {
         this.schemaA = schemaA;
@@ -75,12 +72,12 @@ public class SimilarityFloodingAlgorithm implements MatchingAlgorithm<MatchableT
 
         similarityFlooding(ipg, maxSteps);
 
-        List<Pair<Pair<SFLiteral, SFLiteral>, Double>> engagements = filterStableMarriage(ipg);
+        List<Pair<Pair<SFNode, SFNode>, Double>> engagements = filterStableMarriage(ipg);
 
         result = new ProcessableCollection<>();
         logger.trace("Final result after filter application:");
-        for (Pair<Pair<SFLiteral, SFLiteral>, Double> entry : engagements) {
-            Pair<SFLiteral, SFLiteral> pair = entry.getFirst();
+        for (Pair<Pair<SFNode, SFNode>, Double> entry : engagements) {
+            Pair<SFNode, SFNode> pair = entry.getFirst();
             if (pair.getFirst() == null) {
                 logger.trace("no_match_found");
             } else {
@@ -103,28 +100,28 @@ public class SimilarityFloodingAlgorithm implements MatchingAlgorithm<MatchableT
         }
     }
 
-    private List<Pair<Pair<SFLiteral, SFLiteral>, Double>> filterStableMarriage(SimpleDirectedGraph<IPGNode, CoeffEdge> ipg) {
-        List<Pair<Pair<SFLiteral, SFLiteral>, Double>> engagements = new ArrayList<>();
+    private List<Pair<Pair<SFNode, SFNode>, Double>> filterStableMarriage(SimpleDirectedGraph<IPGNode, CoeffEdge> ipg) {
+        List<Pair<Pair<SFNode, SFNode>, Double>> engagements = new ArrayList<>();
 
-        HashMap<SFLiteral, Pair<SFLiteral, List<Pair<Double, SFLiteral>>>> schema1Engagements = new HashMap<>();
-        HashMap<SFLiteral, Pair<Double, SFLiteral>> schema2Engagements = new HashMap<>();
+        HashMap<SFNode, Pair<SFNode, List<Pair<Double, SFNode>>>> schema1Engagements = new HashMap<>();
+        HashMap<SFNode, Pair<Double, SFNode>> schema2Engagements = new HashMap<>();
         initEngagementsSchemas(ipg, schema1Engagements, schema2Engagements);
 
         boolean change = true;
         while (change) {
             change = false;
 
-            for (Entry<SFLiteral, Pair<SFLiteral, List<Pair<Double, SFLiteral>>>> entry : schema1Engagements.entrySet()) {
+            for (Entry<SFNode, Pair<SFNode, List<Pair<Double, SFNode>>>> entry : schema1Engagements.entrySet()) {
                 if (entry.getValue().getFirst() == null && entry.getValue().getSecond().size() > 0) {
-                    List<Pair<Double, SFLiteral>> possibleMarriages = entry.getValue().getSecond();
-                    Pair<Double, SFLiteral> proposal = possibleMarriages.remove(0);
+                    List<Pair<Double, SFNode>> possibleMarriages = entry.getValue().getSecond();
+                    Pair<Double, SFNode> proposal = possibleMarriages.remove(0);
 
                     if (schema2Engagements.get(proposal.getSecond()) == null) {
                         schema2Engagements.put(proposal.getSecond(), new Pair<>(proposal.getFirst(), entry.getKey()));
                         entry.setValue(new Pair<>(proposal.getSecond(), entry.getValue().getSecond()));
                     } else {
                         if (schema2Engagements.get(proposal.getSecond()).getFirst() < proposal.getFirst()) {
-                            Pair<SFLiteral, List<Pair<Double, SFLiteral>>> oldPair = schema1Engagements.get(schema2Engagements.get(proposal.getSecond()).getSecond());
+                            Pair<SFNode, List<Pair<Double, SFNode>>> oldPair = schema1Engagements.get(schema2Engagements.get(proposal.getSecond()).getSecond());
                             schema1Engagements.put(schema2Engagements.get(proposal.getSecond()).getSecond(), new Pair<>(null, oldPair.getSecond()));
                             schema2Engagements.put(proposal.getSecond(), new Pair<>(proposal.getFirst(), entry.getKey()));
                             entry.setValue(new Pair<>(proposal.getSecond(), entry.getValue().getSecond()));
@@ -135,11 +132,11 @@ public class SimilarityFloodingAlgorithm implements MatchingAlgorithm<MatchableT
             }
         }
 
-        for (Entry<SFLiteral, Pair<SFLiteral, List<Pair<Double, SFLiteral>>>> entry : schema1Engagements.entrySet()) {
+        for (Entry<SFNode, Pair<SFNode, List<Pair<Double, SFNode>>>> entry : schema1Engagements.entrySet()) {
             engagements.add(new Pair<>(new Pair<>(entry.getKey(), entry.getValue().getFirst()), 0.0));
         }
 
-        for (Entry<SFLiteral, Pair<Double, SFLiteral>> entry : schema2Engagements.entrySet()) {
+        for (Entry<SFNode, Pair<Double, SFNode>> entry : schema2Engagements.entrySet()) {
             if (entry.getValue() == null) {
                 engagements.add(new Pair<>(new Pair<>(null, entry.getKey()), 0.0));
             }
@@ -148,15 +145,15 @@ public class SimilarityFloodingAlgorithm implements MatchingAlgorithm<MatchableT
         return engagements;
     }
 
-    private void initEngagementsSchemas(SimpleDirectedGraph<IPGNode, CoeffEdge> ipg, HashMap<SFLiteral, Pair<SFLiteral, List<Pair<Double, SFLiteral>>>> schema1Engagements,
-        HashMap<SFLiteral, Pair<Double, SFLiteral>> schema2Engagements) {
-        HashMap<SFLiteral, HashMap<SFLiteral, Double>> schema = clearSfCompressed(ipg);
+    private void initEngagementsSchemas(SimpleDirectedGraph<IPGNode, CoeffEdge> ipg, HashMap<SFNode, Pair<SFNode, List<Pair<Double, SFNode>>>> schema1Engagements,
+        HashMap<SFNode, Pair<Double, SFNode>> schema2Engagements) {
+        HashMap<SFNode, HashMap<SFNode, Double>> schema = clearSfCompressed(ipg);
 
-        for (Entry<SFLiteral, HashMap<SFLiteral, Double>> nodeAEntry : schema.entrySet()) {
-            SFLiteral nodeA = nodeAEntry.getKey();
+        for (Entry<SFNode, HashMap<SFNode, Double>> nodeAEntry : schema.entrySet()) {
+            SFNode nodeA = nodeAEntry.getKey();
 
-            for (Entry<SFLiteral, Double> nodeBEntry : nodeAEntry.getValue().entrySet()) {
-                SFLiteral nodeB = nodeBEntry.getKey();
+            for (Entry<SFNode, Double> nodeBEntry : nodeAEntry.getValue().entrySet()) {
+                SFNode nodeB = nodeBEntry.getKey();
 
                 if (!schema1Engagements.containsKey(nodeA)) {
                     schema1Engagements.put(nodeA, new Pair<>(null, new ArrayList<>()));
@@ -168,25 +165,21 @@ public class SimilarityFloodingAlgorithm implements MatchingAlgorithm<MatchableT
             }
         }
 
-        for (Pair<SFLiteral, List<Pair<Double, SFLiteral>>> l : schema1Engagements.values()) {
-            l.getSecond().sort(Comparator.<Pair<Double, SFLiteral>>comparingDouble(Pair::getFirst).reversed());
+        for (Pair<SFNode, List<Pair<Double, SFNode>>> l : schema1Engagements.values()) {
+            l.getSecond().sort(Comparator.<Pair<Double, SFNode>>comparingDouble(Pair::getFirst).reversed());
         }
     }
 
-    private HashMap<SFLiteral, HashMap<SFLiteral, Double>> clearSfCompressed(SimpleDirectedGraph<IPGNode, CoeffEdge> ipg) {
-
-        // TODO
-        double minSim = 0.00000000000001;
-
-        HashMap<SFLiteral, HashMap<SFLiteral, Double>> nodeSimMap = new HashMap<>();
+    private HashMap<SFNode, HashMap<SFNode, Double>> clearSfCompressed(SimpleDirectedGraph<IPGNode, CoeffEdge> ipg) {
+        HashMap<SFNode, HashMap<SFNode, Double>> nodeSimMap = new HashMap<>();
         for (IPGNode node : ipg.vertexSet()) {
             SFNode nodeA = node.getPairwiseConnectivityNode().getA();
             SFNode nodeB = node.getPairwiseConnectivityNode().getB();
-            if (node.getCurrSim() > minSim && nodeA instanceof SFLiteral && nodeB instanceof SFLiteral) {
-                if (!nodeSimMap.containsKey((SFLiteral) nodeA)) {
-                    nodeSimMap.put((SFLiteral) nodeA, new HashMap<>());
+            if (node.getCurrSim() > minSim && nodeA.getType().equals(SFNodeType.LITERAL) && nodeB.getType().equals(SFNodeType.LITERAL)) {
+                if (!nodeSimMap.containsKey(nodeA)) {
+                    nodeSimMap.put(nodeA, new HashMap<>());
                 }
-                nodeSimMap.get((SFLiteral) nodeA).put((SFLiteral) nodeB, node.getCurrSim());
+                nodeSimMap.get(nodeA).put(nodeB, node.getCurrSim());
             }
         }
         return nodeSimMap;
@@ -237,20 +230,8 @@ public class SimilarityFloodingAlgorithm implements MatchingAlgorithm<MatchableT
         SimpleDirectedGraph<PairwiseConnectivityNode, LabeledEdge> pcg = new SimpleDirectedGraph<>(LabeledEdge.class);
         HashMap<SFNode, HashMap<SFNode, PairwiseConnectivityNode>> nodeMap = new HashMap<>();
         for (LabeledEdge edgeFromA : schemaGraphA.edgeSet()) {
-
-            Class<? extends LabeledEdge> edgeClass = null;
-            if (edgeFromA instanceof ColumnEdge) {
-                edgeClass = ColumnEdge.class;
-            } else if (edgeFromA instanceof DataTypeEdge) {
-                edgeClass = DataTypeEdge.class;
-            } else if (edgeFromA instanceof TypeEdge) {
-                edgeClass = TypeEdge.class;
-            } else if (edgeFromA instanceof NameEdge) {
-                edgeClass = NameEdge.class;
-            }
-
             for (LabeledEdge edgeFromB : schemaGraphB.edgeSet()) {
-                if (edgeClass.isInstance(edgeFromB)) {
+                if (edgeFromA.getType().equals(edgeFromB.getType())) {
 
                     PairwiseConnectivityNode sourceNode;
                     if (!nodeMap.containsKey(schemaGraphA.getEdgeSource(edgeFromA))) {
@@ -277,7 +258,7 @@ public class SimilarityFloodingAlgorithm implements MatchingAlgorithm<MatchableT
                     pcg.addVertex(sourceNode);
                     pcg.addVertex(targetNode);
 
-                    pcg.addEdge(sourceNode, targetNode, createNewClassFromType(edgeClass));
+                    pcg.addEdge(sourceNode, targetNode, new LabeledEdge(edgeFromA.getType()));
                 }
             }
         }
@@ -287,32 +268,20 @@ public class SimilarityFloodingAlgorithm implements MatchingAlgorithm<MatchableT
     SimpleDirectedGraph<IPGNode, CoeffEdge> generateInducedPropagationGraph(SimpleDirectedGraph<SFNode, LabeledEdge> schemaGraphA, SimpleDirectedGraph<SFNode, LabeledEdge> schemaGraphB,
         SimpleDirectedGraph<PairwiseConnectivityNode, LabeledEdge> pcg) {
         HashMap<SFNode, HashMap<SFNode, Double>> simMap = generateInitialMap(schemaGraphA, schemaGraphB);
-
         SimpleDirectedGraph<IPGNode, CoeffEdge> ipg = new SimpleDirectedGraph<>(CoeffEdge.class);
         HashMap<PairwiseConnectivityNode, IPGNode> nodeMap = new HashMap<>();
 
         for (LabeledEdge pcgEdge : pcg.edgeSet()) {
-
             IPGNode nodeA = createIPGNodeFromPCGNode(pcg.getEdgeSource(pcgEdge), nodeMap, simMap);
             ipg.addVertex(nodeA);
+
             IPGNode nodeB = createIPGNodeFromPCGNode(pcg.getEdgeTarget(pcgEdge), nodeMap, simMap);
             ipg.addVertex(nodeB);
 
-            //TODO
-            String label = "";
-            if (pcgEdge instanceof ColumnEdge) {
-                label = "column";
-            } else if (pcgEdge instanceof DataTypeEdge) {
-                label = "dataType";
-            } else if (pcgEdge instanceof TypeEdge) {
-                label = "type";
-            } else if (pcgEdge instanceof NameEdge) {
-                label = "name";
-            }
-
-            CoeffEdge coeffEdgeA = new CoeffEdge(inverseProduct(pcg.getEdgeSource(pcgEdge), pcg).get(label));
+            CoeffEdge coeffEdgeA = new CoeffEdge(inverseProduct(pcg.getEdgeSource(pcgEdge), pcg).get(pcgEdge.getType()));
             ipg.addEdge(nodeA, nodeB, coeffEdgeA);
-            CoeffEdge coeffEdgeB = new CoeffEdge(inverseProduct(pcg.getEdgeTarget(pcgEdge), pcg).get(label));
+
+            CoeffEdge coeffEdgeB = new CoeffEdge(inverseProduct(pcg.getEdgeTarget(pcgEdge), pcg).get(pcgEdge.getType()));
             ipg.addEdge(nodeB, nodeA, coeffEdgeB);
         }
         return ipg;
@@ -325,99 +294,99 @@ public class SimilarityFloodingAlgorithm implements MatchingAlgorithm<MatchableT
         String currOid = "&1";
 
         // prepare data type nodes but add only if datatype exists
-        SFIdentifier columnOidStringDataTypeNode = null;
-        SFLiteral stringSFLiteral = new SFLiteral("string");
+        SFNode columnOidStringDataTypeNode = null;
+        SFNode stringSFLiteral = new SFNode("string", SFNodeType.LITERAL);
 
-        SFIdentifier columnOidNumericDataTypeNode = null;
-        SFLiteral nunericSFLiteral = new SFLiteral("numeric");
+        SFNode columnOidNumericDataTypeNode = null;
+        SFNode nunericSFLiteral = new SFNode("numeric", SFNodeType.LITERAL);
 
-        SFIdentifier columnOidDateDataTypeNode = null;
-        SFLiteral dateSFLiteral = new SFLiteral("date");
+        SFNode columnOidDateDataTypeNode = null;
+        SFNode dateSFLiteral = new SFNode("date", SFNodeType.LITERAL);
 
         // prepare Column type node
-        SFIdentifier columnTypeNode = new SFIdentifier("Column");
+        SFNode columnTypeNode = new SFNode("Column", SFNodeType.IDENTIFIER);
         graph.addVertex(columnTypeNode);
         // prepare ColumnType type node
-        SFIdentifier columnTypeTypeNode = new SFIdentifier("ColumnType");
+        SFNode columnTypeTypeNode = new SFNode("ColumnType", SFNodeType.IDENTIFIER);
         graph.addVertex(columnTypeTypeNode);
         // prepare Table type node
-        SFIdentifier tableTypeNode = new SFIdentifier("Table");
+        SFNode tableTypeNode = new SFNode("Table", SFNodeType.IDENTIFIER);
         graph.addVertex(tableTypeNode);
 
         // Node for table metadata
-        SFIdentifier tableOidNode = new SFIdentifier(currOid);
+        SFNode tableOidNode = new SFNode(currOid, SFNodeType.IDENTIFIER);
         graph.addVertex(tableOidNode);
 
-        SFLiteral tableNameNode = new SFLiteral(schema.getTableName());
+        SFNode tableNameNode = new SFNode(schema.getTableName(), SFNodeType.LITERAL);
         graph.addVertex(tableNameNode);
 
         // type edge
-        graph.addEdge(tableOidNode, tableTypeNode, new TypeEdge());
+        graph.addEdge(tableOidNode, tableTypeNode, new LabeledEdge(LabeledEdgeType.TYPE));
 
         // name edge
-        graph.addEdge(tableNameNode, tableOidNode, new NameEdge());
+        graph.addEdge(tableNameNode, tableOidNode, new LabeledEdge(LabeledEdgeType.NAME));
 
         for (MatchableTableColumn column : schema.getColumns()) {
-            SFLiteral columnNameNode = new SFLiteral(column.getHeader());
+            SFNode columnNameNode = new SFNode(column.getHeader(), SFNodeType.LITERAL);
             schemaMap.put(column.getHeader(), column);
             graph.addVertex(columnNameNode);
 
             currOid = nextOid(currOid);
-            SFIdentifier columnOidNode = new SFIdentifier(currOid);
+            SFNode columnOidNode = new SFNode(currOid, SFNodeType.IDENTIFIER);
             graph.addVertex(columnOidNode);
 
             // column edge
-            graph.addEdge(tableOidNode, columnOidNode, new ColumnEdge());
+            graph.addEdge(tableOidNode, columnOidNode, new LabeledEdge(LabeledEdgeType.COLUMN));
 
             // name edge
-            graph.addEdge(columnOidNode, columnNameNode, new NameEdge());
+            graph.addEdge(columnOidNode, columnNameNode, new LabeledEdge(LabeledEdgeType.NAME));
 
             // type edge
-            graph.addEdge(columnOidNode, columnTypeNode, new TypeEdge());
+            graph.addEdge(columnOidNode, columnTypeNode, new LabeledEdge(LabeledEdgeType.TYPE));
 
             // dataType edge
             if (column.getType().equals(DataType.date)) {
                 if (columnOidDateDataTypeNode == null) {
                     currOid = nextOid(currOid);
-                    columnOidDateDataTypeNode = new SFIdentifier(currOid);
+                    columnOidDateDataTypeNode = new SFNode(currOid, SFNodeType.IDENTIFIER);
                     graph.addVertex(columnOidDateDataTypeNode);
                     graph.addVertex(dateSFLiteral);
 
                     // name edge
-                    graph.addEdge(columnOidDateDataTypeNode, dateSFLiteral, new NameEdge());
+                    graph.addEdge(columnOidDateDataTypeNode, dateSFLiteral, new LabeledEdge(LabeledEdgeType.NAME));
 
                     // type edge
-                    graph.addEdge(columnOidDateDataTypeNode, columnTypeTypeNode, new TypeEdge());
+                    graph.addEdge(columnOidDateDataTypeNode, columnTypeTypeNode, new LabeledEdge(LabeledEdgeType.TYPE));
                 }
-                graph.addEdge(columnOidNode, columnOidDateDataTypeNode, new DataTypeEdge());
+                graph.addEdge(columnOidNode, columnOidDateDataTypeNode, new LabeledEdge(LabeledEdgeType.DATA_TYPE));
             } else if (column.getType().equals(DataType.string)) {
                 if (columnOidStringDataTypeNode == null) {
                     currOid = nextOid(currOid);
-                    columnOidStringDataTypeNode = new SFIdentifier(currOid);
+                    columnOidStringDataTypeNode = new SFNode(currOid, SFNodeType.IDENTIFIER);
                     graph.addVertex(columnOidStringDataTypeNode);
                     graph.addVertex(stringSFLiteral);
 
                     // name edge
-                    graph.addEdge(columnOidStringDataTypeNode, stringSFLiteral, new NameEdge());
+                    graph.addEdge(columnOidStringDataTypeNode, stringSFLiteral, new LabeledEdge(LabeledEdgeType.NAME));
 
                     // type edge
-                    graph.addEdge(columnOidStringDataTypeNode, columnTypeTypeNode, new TypeEdge());
+                    graph.addEdge(columnOidStringDataTypeNode, columnTypeTypeNode, new LabeledEdge(LabeledEdgeType.TYPE));
                 }
-                graph.addEdge(columnOidNode, columnOidStringDataTypeNode, new DataTypeEdge());
+                graph.addEdge(columnOidNode, columnOidStringDataTypeNode, new LabeledEdge(LabeledEdgeType.DATA_TYPE));
             } else {
                 if (columnOidNumericDataTypeNode == null) {
                     currOid = nextOid(currOid);
-                    columnOidNumericDataTypeNode = new SFIdentifier(currOid);
+                    columnOidNumericDataTypeNode = new SFNode(currOid, SFNodeType.IDENTIFIER);
                     graph.addVertex(columnOidNumericDataTypeNode);
                     graph.addVertex(nunericSFLiteral);
 
                     // name edge
-                    graph.addEdge(columnOidNumericDataTypeNode, nunericSFLiteral, new NameEdge());
+                    graph.addEdge(columnOidNumericDataTypeNode, nunericSFLiteral, new LabeledEdge(LabeledEdgeType.NAME));
 
                     // type edge
-                    graph.addEdge(columnOidNumericDataTypeNode, columnTypeTypeNode, new TypeEdge());
+                    graph.addEdge(columnOidNumericDataTypeNode, columnTypeTypeNode, new LabeledEdge(LabeledEdgeType.TYPE));
                 }
-                graph.addEdge(columnOidNode, columnOidNumericDataTypeNode, new DataTypeEdge());
+                graph.addEdge(columnOidNode, columnOidNumericDataTypeNode, new LabeledEdge(LabeledEdgeType.DATA_TYPE));
             }
         }
 
@@ -442,11 +411,11 @@ public class SimilarityFloodingAlgorithm implements MatchingAlgorithm<MatchableT
         return ipgNode;
     }
 
-    private HashMap<String, Double> inverseProduct(PairwiseConnectivityNode node, SimpleDirectedGraph<PairwiseConnectivityNode, LabeledEdge> pcd) {
-        HashMap<String, List<PairwiseConnectivityNode>> nodeByLabels = partitionNeighboursByLabels(node, pcd);
+    private HashMap<LabeledEdgeType, Double> inverseProduct(PairwiseConnectivityNode node, SimpleDirectedGraph<PairwiseConnectivityNode, LabeledEdge> pcd) {
+        HashMap<LabeledEdgeType, List<PairwiseConnectivityNode>> nodeByLabels = partitionNeighboursByLabels(node, pcd);
 
-        HashMap<String, Double> result = new HashMap<>();
-        for (Entry<String, List<PairwiseConnectivityNode>> label : nodeByLabels.entrySet()) {
+        HashMap<LabeledEdgeType, Double> result = new HashMap<>();
+        for (Entry<LabeledEdgeType, List<PairwiseConnectivityNode>> label : nodeByLabels.entrySet()) {
             result.put(label.getKey(), 1 / (double) label.getValue().size());
         }
 
@@ -454,50 +423,24 @@ public class SimilarityFloodingAlgorithm implements MatchingAlgorithm<MatchableT
     }
 
 
-    private HashMap<String, List<PairwiseConnectivityNode>> partitionNeighboursByLabels(PairwiseConnectivityNode node, SimpleDirectedGraph<PairwiseConnectivityNode, LabeledEdge> pcd) {
-        HashMap<String, List<PairwiseConnectivityNode>> neighboursByLabels = new HashMap<>();
+    private HashMap<LabeledEdgeType, List<PairwiseConnectivityNode>> partitionNeighboursByLabels(PairwiseConnectivityNode node, SimpleDirectedGraph<PairwiseConnectivityNode, LabeledEdge> pcd) {
+        HashMap<LabeledEdgeType, List<PairwiseConnectivityNode>> neighboursByEdgeType = new HashMap<>();
 
         for (LabeledEdge outgoingEdge : pcd.outgoingEdgesOf(node)) {
-
-            //TODO
-            String label = "";
-            if (outgoingEdge instanceof ColumnEdge) {
-                label = "column";
-            } else if (outgoingEdge instanceof DataTypeEdge) {
-                label = "dataType";
-            } else if (outgoingEdge instanceof TypeEdge) {
-                label = "type";
-            } else if (outgoingEdge instanceof NameEdge) {
-                label = "name";
+            if (!neighboursByEdgeType.containsKey(outgoingEdge.getType())) {
+                neighboursByEdgeType.put(outgoingEdge.getType(), new ArrayList<>());
             }
-
-            if (!neighboursByLabels.containsKey(label)) {
-                neighboursByLabels.put(label, new ArrayList<>());
-            }
-
-            neighboursByLabels.get(label).add(pcd.getEdgeTarget(outgoingEdge));
+            neighboursByEdgeType.get(outgoingEdge.getType()).add(pcd.getEdgeTarget(outgoingEdge));
         }
 
         for (LabeledEdge incomingEdge : pcd.incomingEdgesOf(node)) {
-            String label = "";
-            if (incomingEdge instanceof ColumnEdge) {
-                label = "column";
-            } else if (incomingEdge instanceof DataTypeEdge) {
-                label = "dataType";
-            } else if (incomingEdge instanceof TypeEdge) {
-                label = "type";
-            } else if (incomingEdge instanceof NameEdge) {
-                label = "name";
+            if (!neighboursByEdgeType.containsKey(incomingEdge.getType())) {
+                neighboursByEdgeType.put(incomingEdge.getType(), new ArrayList<>());
             }
-
-            if (!neighboursByLabels.containsKey(label)) {
-                neighboursByLabels.put(label, new ArrayList<>());
-            }
-
-            neighboursByLabels.get(label).add(pcd.getEdgeSource(incomingEdge));
+            neighboursByEdgeType.get(incomingEdge.getType()).add(pcd.getEdgeSource(incomingEdge));
         }
 
-        return neighboursByLabels;
+        return neighboursByEdgeType;
     }
 
     private HashMap<SFNode, HashMap<SFNode, Double>> generateInitialMap(SimpleDirectedGraph<SFNode, LabeledEdge> schemaGraphA, SimpleDirectedGraph<SFNode, LabeledEdge> schemaGraphB) {
@@ -505,35 +448,23 @@ public class SimilarityFloodingAlgorithm implements MatchingAlgorithm<MatchableT
         LevenshteinSimilarity levenshtein = new LevenshteinSimilarity();
 
         for (SFNode nodeFromA : schemaGraphA.vertexSet()) {
-            if (!nodeFromA.getValue().contains("&")) {
-                for (SFNode nodeFromB : schemaGraphB.vertexSet()) {
-                    if (!nodeFromB.getValue().contains("&")) {
+            for (SFNode nodeFromB : schemaGraphB.vertexSet()) {
 
-                        double sim;
-                        if (nodeFromA.getValue().equals("string") && nodeFromB.getValue().equals("numeric") || nodeFromA.getValue().equals("numeric") && nodeFromB.getValue().equals("string")) {
-                            sim = 0.0;
-                        } else {
-                            sim = levenshtein.calculate(nodeFromA.getValue(), nodeFromB.getValue());
-                        }
-
-                        if (!simMap.containsKey(nodeFromA)) {
-                            simMap.put(nodeFromA, new HashMap<>());
-                        }
-
-                        simMap.get(nodeFromA).put(nodeFromB, sim);
-                    }
+                double sim;
+                if (nodeFromA.getValue().equals("string") && nodeFromB.getValue().equals("numeric") || nodeFromA.getValue().equals("numeric") && nodeFromB.getValue().equals("string")) {
+                    sim = 0.0001;
+                } else {
+                    sim = levenshtein.calculate(nodeFromA.getValue(), nodeFromB.getValue());
                 }
+
+                if (!simMap.containsKey(nodeFromA)) {
+                    simMap.put(nodeFromA, new HashMap<>());
+                }
+
+                simMap.get(nodeFromA).put(nodeFromB, sim);
             }
         }
         return simMap;
-    }
-
-    private LabeledEdge createNewClassFromType(Class<? extends LabeledEdge> edgeClass) {
-        try {
-            return edgeClass.getDeclaredConstructor().newInstance();
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 
     private String nextOid(String currOid) {
@@ -545,7 +476,6 @@ public class SimilarityFloodingAlgorithm implements MatchingAlgorithm<MatchableT
         return ipg;
     }
 
-
     public void setEpsilon(double epsilon) {
         this.epsilon = epsilon;
     }
@@ -556,6 +486,14 @@ public class SimilarityFloodingAlgorithm implements MatchingAlgorithm<MatchableT
 
     public void setDefaultSim(double defaultSim) {
         this.defaultSim = defaultSim;
+    }
+
+    public double getMinSim() {
+        return minSim;
+    }
+
+    public void setMinSim(double minSim) {
+        this.minSim = minSim;
     }
 
     @Override
