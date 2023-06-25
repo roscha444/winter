@@ -32,7 +32,7 @@ import java.util.List;
 import org.slf4j.Logger;
 
 /**
- * @author Robin Schumacher (info@robin-schumacher.com
+ * @author Robin Schumacher (info@robin-schumacher.com)
  */
 public class Movies_SimilarityFloodingSchemaMatching {
 
