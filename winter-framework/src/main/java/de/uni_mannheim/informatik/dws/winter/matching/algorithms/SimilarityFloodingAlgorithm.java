@@ -34,7 +34,6 @@ import org.slf4j.Logger;
 public class SimilarityFloodingAlgorithm implements MatchingAlgorithm<MatchableTableColumn, MatchableTableColumn> {
 
     private static final Logger logger = WinterLogManager.getLogger();
-
     private final SimilarityFloodingSchema schemaA;
     private final SimilarityFloodingSchema schemaB;
     private SimpleDirectedGraph<SFNode, LabeledEdge> schemaGraphA;
@@ -96,6 +95,7 @@ public class SimilarityFloodingAlgorithm implements MatchingAlgorithm<MatchableT
                 continue;
             }
 
+            // TODO check what to do with similarityScore!
             result.add(new Correspondence<>(schemaAMap.get(pair.getFirst().getValue()), schemaBMap.get(pair.getSecond().getValue()), 0.0));
         }
     }

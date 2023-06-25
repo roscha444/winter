@@ -204,6 +204,8 @@ public class SimilarityFloodingAlgorithmTest extends TestCase {
 
         // validate
         HashMap<String, HashMap<String, Double>> nodeSimMap = getResultMap(similarityFloodingAlgorithm);
+
+        // TODO check results here!
         assertEquals(1.0, nodeSimMap.get("Personnel").get("Employee"), 0.1);
         assertEquals(0.6, nodeSimMap.get("Pno").get("EmpNo"), 0.1);
         assertEquals(1.07, nodeSimMap.get("Pno").get("EmpName"), 0.1);
