@@ -1,4 +1,6 @@
-package de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf;
+package de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.ipg;
+
+import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.pcg.PairwiseConnectivityNode;
 
 public class IPGNode {
 

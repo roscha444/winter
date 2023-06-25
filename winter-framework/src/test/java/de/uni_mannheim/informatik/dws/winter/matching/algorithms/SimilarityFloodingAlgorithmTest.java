@@ -1,13 +1,13 @@
 package de.uni_mannheim.informatik.dws.winter.matching.algorithms;
 
-import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.CoeffEdge;
-import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.IPGNode;
-import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.LabeledEdge;
-import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.LabeledEdgeType;
-import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.PairwiseConnectivityNode;
-import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.SFNode;
-import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.SFNodeType;
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.SimilarityFloodingSchema;
+import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.ipg.CoeffEdge;
+import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.ipg.IPGNode;
+import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.pcg.LabeledEdge;
+import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.pcg.LabeledEdgeType;
+import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.pcg.PairwiseConnectivityNode;
+import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.pcg.SFNode;
+import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.pcg.SFNodeType;
 import de.uni_mannheim.informatik.dws.winter.model.Correspondence;
 import de.uni_mannheim.informatik.dws.winter.preprocessing.datatypes.DataType;
 import de.uni_mannheim.informatik.dws.winter.processing.Processable;

@@ -1,4 +1,4 @@
-package de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf;
+package de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.pcg;
 
 public class PairwiseConnectivityNode {
 

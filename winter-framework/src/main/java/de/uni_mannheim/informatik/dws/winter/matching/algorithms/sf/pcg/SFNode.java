@@ -1,4 +1,4 @@
-package de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf;
+package de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.pcg;
 
 /**
  * This class represents a node in the graph representation for a relational schema according to the SF-algorithm.
