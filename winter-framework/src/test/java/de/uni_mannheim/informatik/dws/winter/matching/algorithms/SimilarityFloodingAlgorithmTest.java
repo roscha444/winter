@@ -2,7 +2,6 @@ package de.uni_mannheim.informatik.dws.winter.matching.algorithms;
 
 import static junit.framework.TestCase.assertEquals;
 
-import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.SimilarityFloodingSchema;
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.ipg.CoeffEdge;
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.ipg.IPGNode;
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.pcg.LabeledEdge;
@@ -10,10 +9,14 @@ import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.pcg.LabeledE
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.pcg.PairwiseConnectivityNode;
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.pcg.SFNode;
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.pcg.SFNodeType;
+import de.uni_mannheim.informatik.dws.winter.matching.rules.comparators.Comparator;
+import de.uni_mannheim.informatik.dws.winter.matching.rules.comparators.ComparatorLogger;
 import de.uni_mannheim.informatik.dws.winter.model.Correspondence;
+import de.uni_mannheim.informatik.dws.winter.model.Matchable;
 import de.uni_mannheim.informatik.dws.winter.preprocessing.datatypes.DataType;
 import de.uni_mannheim.informatik.dws.winter.processing.Processable;
-import de.uni_mannheim.informatik.dws.winter.webtables.MatchableTableColumn;
+import de.uni_mannheim.informatik.dws.winter.similarity.string.LevenshteinSimilarity;
+import de.uni_mannheim.informatik.dws.winter.webtables.SFMatchable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -28,23 +31,71 @@ import org.junit.Test;
  */
 public class SimilarityFloodingAlgorithmTest {
 
+    public static class SFComparatorLevenshtein implements Comparator<SFTestMatchable, SFTestMatchable> {
+
+        private static final long serialVersionUID = 1L;
+        private final LevenshteinSimilarity similarity = new LevenshteinSimilarity();
+        private ComparatorLogger comparisonLog;
+
+
+        @Override
+        public double compare(SFTestMatchable record1, SFTestMatchable record2, Correspondence<SFTestMatchable, Matchable> schemaCorrespondence) {
+            return similarity.calculate(record1.getValue(), record2.getValue());
+        }
+
+        @Override
+        public ComparatorLogger getComparisonLog() {
+            return this.comparisonLog;
+        }
+
+        @Override
+        public void setComparisonLog(ComparatorLogger comparatorLog) {
+            this.comparisonLog = comparatorLog;
+        }
+
+    }
+
+    private static class SFTestMatchable extends SFMatchable {
+
+        private final String id;
+        private final String value;
+
+        public SFTestMatchable(DataType type, String id, String value) {
+            super(type);
+            this.id = id;
+            this.value = value;
+        }
+
+        public String getValue() {
+            return value;
+        }
+
+        @Override
+        public String getIdentifier() {
+            return id;
+        }
+
+        @Override
+        public String getProvenance() {
+            return null;
+        }
+    }
+
     @Test
     public void testGraphShouldBeCreatedFromSchema() {
         // prepare
-        SimilarityFloodingAlgorithm similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm(null, null);
+        SimilarityFloodingAlgorithm<SFTestMatchable, SFTestMatchable> similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm<>(null, null, new SFComparatorLevenshtein());
 
-        List<MatchableTableColumn> tablesForSchemaA = new ArrayList<>();
-        MatchableTableColumn pno = new MatchableTableColumn(0, 0, "Pno", DataType.numeric);
+        List<SFTestMatchable> tablesForSchemaA = new ArrayList<>();
+        SFTestMatchable pno = new SFTestMatchable(DataType.numeric, "0", "Pno");
         tablesForSchemaA.add(pno);
-        MatchableTableColumn pname = new MatchableTableColumn(0, 1, "Pname", DataType.string);
+        SFTestMatchable pname = new SFTestMatchable(DataType.string, "1", "Pname");
         tablesForSchemaA.add(pname);
-        MatchableTableColumn dept = new MatchableTableColumn(0, 2, "Dept", DataType.string);
+        SFTestMatchable dept = new SFTestMatchable(DataType.string, "2", "Dept");
         tablesForSchemaA.add(dept);
 
-        SimilarityFloodingSchema schemaA = new SimilarityFloodingSchema("Personnel", tablesForSchemaA);
-
         //execute
-        SimpleDirectedGraph<SFNode, LabeledEdge> schemaGraphA = similarityFloodingAlgorithm.createGraphForSchema(schemaA, new HashMap<>());
+        SimpleDirectedGraph<SFNode<SFTestMatchable>, LabeledEdge> schemaGraphA = similarityFloodingAlgorithm.createGraphForSchema(tablesForSchemaA, "Personnel");
 
         //validate
         assertEquals(18, schemaGraphA.edgeSet().size());
@@ -54,29 +105,29 @@ public class SimilarityFloodingAlgorithmTest {
     @Test
     public void testPairWiseConnectivityGraphShouldBeCreatedFromGraph() {
         // prepare
-        SimilarityFloodingAlgorithm similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm(null, null);
+        SimilarityFloodingAlgorithm<SFTestMatchable, SFTestMatchable> similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm<>(null, null, new SFComparatorLevenshtein());
 
-        SimpleDirectedGraph<SFNode, LabeledEdge> modelA = new SimpleDirectedGraph<>(LabeledEdge.class);
-        SFNode a = new SFNode("a", SFNodeType.IDENTIFIER);
+        SimpleDirectedGraph<SFNode<SFTestMatchable>, LabeledEdge> modelA = new SimpleDirectedGraph<>(LabeledEdge.class);
+        SFNode<SFTestMatchable> a = new SFNode<>("a", SFNodeType.IDENTIFIER);
         modelA.addVertex(a);
-        SFNode a1 = new SFNode("a1", SFNodeType.IDENTIFIER);
+        SFNode<SFTestMatchable> a1 = new SFNode<>("a1", SFNodeType.IDENTIFIER);
         modelA.addVertex(a1);
-        SFNode a2 = new SFNode("a2", SFNodeType.IDENTIFIER);
+        SFNode<SFTestMatchable> a2 = new SFNode<>("a2", SFNodeType.IDENTIFIER);
         modelA.addVertex(a2);
 
         modelA.addEdge(a, a1, new LabeledEdge(LabeledEdgeType.NAME));
         modelA.addEdge(a, a2, new LabeledEdge(LabeledEdgeType.NAME));
         modelA.addEdge(a1, a2, new LabeledEdge(LabeledEdgeType.TYPE));
 
-        SimpleDirectedGraph<SFNode, LabeledEdge> modelB = new SimpleDirectedGraph<>(LabeledEdge.class);
+        SimpleDirectedGraph<SFNode<SFTestMatchable>, LabeledEdge> modelB = new SimpleDirectedGraph<>(LabeledEdge.class);
 
-        SFNode b = new SFNode("b", SFNodeType.IDENTIFIER);
+        SFNode<SFTestMatchable> b = new SFNode<>("b", SFNodeType.IDENTIFIER);
         modelB.addVertex(b);
 
-        SFNode b1 = new SFNode("b1", SFNodeType.IDENTIFIER);
+        SFNode<SFTestMatchable> b1 = new SFNode<>("b1", SFNodeType.IDENTIFIER);
         modelB.addVertex(b1);
 
-        SFNode b2 = new SFNode("b2", SFNodeType.IDENTIFIER);
+        SFNode<SFTestMatchable> b2 = new SFNode<>("b2", SFNodeType.IDENTIFIER);
         modelB.addVertex(b2);
 
         modelB.addEdge(b, b1, new LabeledEdge(LabeledEdgeType.NAME));
@@ -94,29 +145,29 @@ public class SimilarityFloodingAlgorithmTest {
     @Test
     public void testInducedPropagationGraphShouldBeCreatedFromPCG() {
         // prepare
-        SimilarityFloodingAlgorithm similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm(null, null);
+        SimilarityFloodingAlgorithm<SFTestMatchable, SFTestMatchable> similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm<>(null, null, null);
 
-        SimpleDirectedGraph<SFNode, LabeledEdge> modelA = new SimpleDirectedGraph<>(LabeledEdge.class);
-        SFNode a = new SFNode("a", SFNodeType.IDENTIFIER);
+        SimpleDirectedGraph<SFNode<SFTestMatchable>, LabeledEdge> modelA = new SimpleDirectedGraph<>(LabeledEdge.class);
+        SFNode<SFTestMatchable> a = new SFNode<>("a", SFNodeType.IDENTIFIER);
         modelA.addVertex(a);
-        SFNode a1 = new SFNode("a1", SFNodeType.IDENTIFIER);
+        SFNode<SFTestMatchable> a1 = new SFNode<>("a1", SFNodeType.IDENTIFIER);
         modelA.addVertex(a1);
-        SFNode a2 = new SFNode("a2", SFNodeType.IDENTIFIER);
+        SFNode<SFTestMatchable> a2 = new SFNode<>("a2", SFNodeType.IDENTIFIER);
         modelA.addVertex(a2);
 
         modelA.addEdge(a, a1, new LabeledEdge(LabeledEdgeType.NAME));
         modelA.addEdge(a, a2, new LabeledEdge(LabeledEdgeType.NAME));
         modelA.addEdge(a1, a2, new LabeledEdge(LabeledEdgeType.TYPE));
 
-        SimpleDirectedGraph<SFNode, LabeledEdge> modelB = new SimpleDirectedGraph<>(LabeledEdge.class);
+        SimpleDirectedGraph<SFNode<SFTestMatchable>, LabeledEdge> modelB = new SimpleDirectedGraph<>(LabeledEdge.class);
 
-        SFNode b = new SFNode("b", SFNodeType.IDENTIFIER);
+        SFNode<SFTestMatchable> b = new SFNode<>("b", SFNodeType.IDENTIFIER);
         modelB.addVertex(b);
 
-        SFNode b1 = new SFNode("b1", SFNodeType.IDENTIFIER);
+        SFNode<SFTestMatchable> b1 = new SFNode<>("b1", SFNodeType.IDENTIFIER);
         modelB.addVertex(b1);
 
-        SFNode b2 = new SFNode("b2", SFNodeType.IDENTIFIER);
+        SFNode<SFTestMatchable> b2 = new SFNode<>("b2", SFNodeType.IDENTIFIER);
         modelB.addVertex(b2);
 
         modelB.addEdge(b, b1, new LabeledEdge(LabeledEdgeType.NAME));
@@ -135,29 +186,29 @@ public class SimilarityFloodingAlgorithmTest {
     @Test
     public void testShouldCalculateFixpointValuesFromIPG_1() {
         // prepare
-        SimilarityFloodingAlgorithm similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm(null, null);
+        SimilarityFloodingAlgorithm<SFTestMatchable, SFTestMatchable> similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm<>(null, null, new SFComparatorLevenshtein());
 
-        SimpleDirectedGraph<SFNode, LabeledEdge> modelA = new SimpleDirectedGraph<>(LabeledEdge.class);
-        SFNode a = new SFNode("a", SFNodeType.IDENTIFIER);
+        SimpleDirectedGraph<SFNode<SFTestMatchable>, LabeledEdge> modelA = new SimpleDirectedGraph<>(LabeledEdge.class);
+        SFNode<SFTestMatchable> a = new SFNode<>("a", SFNodeType.IDENTIFIER);
         modelA.addVertex(a);
-        SFNode a1 = new SFNode("a1", SFNodeType.IDENTIFIER);
+        SFNode<SFTestMatchable> a1 = new SFNode<>("a1", SFNodeType.IDENTIFIER);
         modelA.addVertex(a1);
-        SFNode a2 = new SFNode("a2", SFNodeType.IDENTIFIER);
+        SFNode<SFTestMatchable> a2 = new SFNode<>("a2", SFNodeType.IDENTIFIER);
         modelA.addVertex(a2);
 
         modelA.addEdge(a, a1, new LabeledEdge(LabeledEdgeType.NAME));
         modelA.addEdge(a, a2, new LabeledEdge(LabeledEdgeType.NAME));
         modelA.addEdge(a1, a2, new LabeledEdge(LabeledEdgeType.TYPE));
 
-        SimpleDirectedGraph<SFNode, LabeledEdge> modelB = new SimpleDirectedGraph<>(LabeledEdge.class);
+        SimpleDirectedGraph<SFNode<SFTestMatchable>, LabeledEdge> modelB = new SimpleDirectedGraph<>(LabeledEdge.class);
 
-        SFNode b = new SFNode("b", SFNodeType.IDENTIFIER);
+        SFNode<SFTestMatchable> b = new SFNode<>("b", SFNodeType.IDENTIFIER);
         modelB.addVertex(b);
 
-        SFNode b1 = new SFNode("b1", SFNodeType.IDENTIFIER);
+        SFNode<SFTestMatchable> b1 = new SFNode<>("b1", SFNodeType.IDENTIFIER);
         modelB.addVertex(b1);
 
-        SFNode b2 = new SFNode("b2", SFNodeType.IDENTIFIER);
+        SFNode<SFTestMatchable> b2 = new SFNode<>("b2", SFNodeType.IDENTIFIER);
         modelB.addVertex(b2);
 
         modelB.addEdge(b, b1, new LabeledEdge(LabeledEdgeType.NAME));
@@ -180,31 +231,28 @@ public class SimilarityFloodingAlgorithmTest {
     @Test
     public void testShouldCalculateFixpointValuesFromIPG_2() {
         // prepare
-        List<MatchableTableColumn> columnsSchemaOne = new ArrayList<>();
-        MatchableTableColumn pno = new MatchableTableColumn(0, 0, "Pno", DataType.numeric);
+        List<SFTestMatchable> columnsSchemaOne = new ArrayList<>();
+        SFTestMatchable pno = new SFTestMatchable(DataType.numeric, "Pno", "Pno");
         columnsSchemaOne.add(pno);
-        MatchableTableColumn pname = new MatchableTableColumn(0, 1, "Pname", DataType.string);
+        SFTestMatchable pname = new SFTestMatchable(DataType.string, "Pname", "Pname");
         columnsSchemaOne.add(pname);
-        MatchableTableColumn dept = new MatchableTableColumn(0, 2, "Dept", DataType.string);
+        SFTestMatchable dept = new SFTestMatchable(DataType.string, "Dept", "Dept");
         columnsSchemaOne.add(dept);
-        MatchableTableColumn born = new MatchableTableColumn(0, 3, "Born", DataType.date);
+        SFTestMatchable born = new SFTestMatchable(DataType.date, "Born", "Born");
         columnsSchemaOne.add(born);
 
-        SimilarityFloodingSchema schema1 = new SimilarityFloodingSchema("Personnel", columnsSchemaOne);
-
-        List<MatchableTableColumn> columnsSchemaTwo = new ArrayList<>();
-        MatchableTableColumn empNo = new MatchableTableColumn(1, 0, "EmpNo", DataType.numeric);
+        List<SFTestMatchable> columnsSchemaTwo = new ArrayList<>();
+        SFTestMatchable empNo = new SFTestMatchable(DataType.numeric, "EmpNo", "EmpNo");
         columnsSchemaTwo.add(empNo);
-        MatchableTableColumn empName = new MatchableTableColumn(1, 1, "EmpName", DataType.string);
+        SFTestMatchable empName = new SFTestMatchable(DataType.string, "EmpName", "EmpName");
         columnsSchemaTwo.add(empName);
-        MatchableTableColumn deptNo = new MatchableTableColumn(1, 2, "DepNo", DataType.numeric);
+        SFTestMatchable deptNo = new SFTestMatchable(DataType.numeric, "DepNo", "DepNo");
         columnsSchemaTwo.add(deptNo);
-        MatchableTableColumn birthdate = new MatchableTableColumn(1, 3, "Birthdate", DataType.date);
+        SFTestMatchable birthdate = new SFTestMatchable(DataType.date, "Birthdate", "Birthdate");
         columnsSchemaTwo.add(birthdate);
 
-        SimilarityFloodingSchema schema2 = new SimilarityFloodingSchema("Employee", columnsSchemaTwo);
-
-        SimilarityFloodingAlgorithm similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm(schema1, schema2);
+        SimilarityFloodingAlgorithm<SFTestMatchable, SFTestMatchable> similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm<>("Personnel", columnsSchemaOne, "Employee", columnsSchemaTwo,
+            new SFComparatorLevenshtein());
 
         // run
         similarityFloodingAlgorithm.run();
@@ -222,31 +270,28 @@ public class SimilarityFloodingAlgorithmTest {
     @Test
     public void testShouldCalculateFixpointValuesFromIPG_2_REMOVE_OID() {
         // prepare
-        List<MatchableTableColumn> columnsSchemaOne = new ArrayList<>();
-        MatchableTableColumn pno = new MatchableTableColumn(0, 0, "Pno", DataType.numeric);
+        List<SFTestMatchable> columnsSchemaOne = new ArrayList<>();
+        SFTestMatchable pno = new SFTestMatchable(DataType.numeric, "Pno", "Pno");
         columnsSchemaOne.add(pno);
-        MatchableTableColumn pname = new MatchableTableColumn(0, 1, "Pname", DataType.string);
+        SFTestMatchable pname = new SFTestMatchable(DataType.string, "Pname", "Pname");
         columnsSchemaOne.add(pname);
-        MatchableTableColumn dept = new MatchableTableColumn(0, 2, "Dept", DataType.string);
+        SFTestMatchable dept = new SFTestMatchable(DataType.string, "Dept", "Dept");
         columnsSchemaOne.add(dept);
-        MatchableTableColumn born = new MatchableTableColumn(0, 3, "Born", DataType.date);
+        SFTestMatchable born = new SFTestMatchable(DataType.date, "Born", "Born");
         columnsSchemaOne.add(born);
 
-        SimilarityFloodingSchema schema1 = new SimilarityFloodingSchema("Personnel", columnsSchemaOne);
-
-        List<MatchableTableColumn> columnsSchemaTwo = new ArrayList<>();
-        MatchableTableColumn empNo = new MatchableTableColumn(1, 0, "EmpNo", DataType.numeric);
+        List<SFTestMatchable> columnsSchemaTwo = new ArrayList<>();
+        SFTestMatchable empNo = new SFTestMatchable(DataType.numeric, "EmpNo", "EmpNo");
         columnsSchemaTwo.add(empNo);
-        MatchableTableColumn empName = new MatchableTableColumn(1, 1, "EmpName", DataType.string);
+        SFTestMatchable empName = new SFTestMatchable(DataType.string, "EmpName", "EmpName");
         columnsSchemaTwo.add(empName);
-        MatchableTableColumn deptNo = new MatchableTableColumn(1, 2, "DepNo", DataType.numeric);
+        SFTestMatchable deptNo = new SFTestMatchable(DataType.numeric, "DepNo", "DepNo");
         columnsSchemaTwo.add(deptNo);
-        MatchableTableColumn birthdate = new MatchableTableColumn(1, 3, "Birthdate", DataType.date);
+        SFTestMatchable birthdate = new SFTestMatchable(DataType.date, "Birthdate", "Birthdate");
         columnsSchemaTwo.add(birthdate);
 
-        SimilarityFloodingSchema schema2 = new SimilarityFloodingSchema("Employee", columnsSchemaTwo);
-
-        SimilarityFloodingAlgorithm similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm(schema1, schema2);
+        SimilarityFloodingAlgorithm<SFTestMatchable, SFTestMatchable> similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm<>("Personnel", columnsSchemaOne, "Employee", columnsSchemaTwo,
+            new SFComparatorLevenshtein());
         similarityFloodingAlgorithm.setRemoveOid(true);
 
         // run
@@ -265,110 +310,105 @@ public class SimilarityFloodingAlgorithmTest {
     @Test
     public void testShouldRunSimilarityFloodingAlgorithm_1() {
         // prepare
-        List<MatchableTableColumn> columnsSchemaOne = new ArrayList<>();
-        MatchableTableColumn pno = new MatchableTableColumn(0, 0, "Pno", DataType.numeric);
+        List<SFTestMatchable> columnsSchemaOne = new ArrayList<>();
+        SFTestMatchable pno = new SFTestMatchable(DataType.numeric, "Pno", "Pno");
         columnsSchemaOne.add(pno);
-        MatchableTableColumn pname = new MatchableTableColumn(0, 1, "Pname", DataType.string);
+        SFTestMatchable pname = new SFTestMatchable(DataType.string, "Pname", "Pname");
         columnsSchemaOne.add(pname);
-        MatchableTableColumn dept = new MatchableTableColumn(0, 2, "Dept", DataType.string);
+        SFTestMatchable dept = new SFTestMatchable(DataType.string, "Dept", "Dept");
         columnsSchemaOne.add(dept);
-        MatchableTableColumn born = new MatchableTableColumn(0, 3, "Born", DataType.date);
+        SFTestMatchable born = new SFTestMatchable(DataType.date, "Born", "Born");
         columnsSchemaOne.add(born);
 
-        SimilarityFloodingSchema schema1 = new SimilarityFloodingSchema("Personnel", columnsSchemaOne);
-
-        List<MatchableTableColumn> columnsSchemaTwo = new ArrayList<>();
-        MatchableTableColumn empNo = new MatchableTableColumn(1, 0, "EmpNo", DataType.numeric);
+        List<SFTestMatchable> columnsSchemaTwo = new ArrayList<>();
+        SFTestMatchable empNo = new SFTestMatchable(DataType.numeric, "EmpNo", "EmpNo");
         columnsSchemaTwo.add(empNo);
-        MatchableTableColumn empName = new MatchableTableColumn(1, 1, "EmpName", DataType.string);
+        SFTestMatchable empName = new SFTestMatchable(DataType.numeric, "EmpName", "EmpName");
         columnsSchemaTwo.add(empName);
-        MatchableTableColumn deptNo = new MatchableTableColumn(1, 2, "DepNo", DataType.numeric);
+        SFTestMatchable deptNo = new SFTestMatchable(DataType.numeric, "DepNo", "DepNo");
         columnsSchemaTwo.add(deptNo);
-        MatchableTableColumn salary = new MatchableTableColumn(1, 3, "Salary", DataType.numeric);
+        SFTestMatchable salary = new SFTestMatchable(DataType.numeric, "Salary", "Salary");
         columnsSchemaTwo.add(salary);
-        MatchableTableColumn birthdate = new MatchableTableColumn(1, 4, "Birthdate", DataType.date);
+        SFTestMatchable birthdate = new SFTestMatchable(DataType.date, "Birthdate", "Birthdate");
         columnsSchemaTwo.add(birthdate);
 
-        SimilarityFloodingSchema schema2 = new SimilarityFloodingSchema("Employee", columnsSchemaTwo);
-
-        SimilarityFloodingAlgorithm similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm(schema1, schema2);
+        SimilarityFloodingAlgorithm<SFTestMatchable, SFTestMatchable> similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm<>("Personnel", columnsSchemaOne, "Employee", columnsSchemaTwo,
+            new SFComparatorLevenshtein());
 
         // run
         similarityFloodingAlgorithm.run();
 
         // validate
-        Processable<Correspondence<MatchableTableColumn, MatchableTableColumn>> result = similarityFloodingAlgorithm.getResult();
+        Processable<Correspondence<SFTestMatchable, SFTestMatchable>> result = similarityFloodingAlgorithm.getResult();
 
         HashMap<String, String> resultList = new HashMap<>();
-        for (Correspondence<MatchableTableColumn, MatchableTableColumn> correspondence : result.get()) {
-            resultList.put(correspondence.getFirstRecord().getHeader(), correspondence.getSecondRecord().getHeader());
+        for (Correspondence<SFTestMatchable, SFTestMatchable> correspondence : result.get()) {
+            resultList.put(correspondence.getFirstRecord().getValue(), correspondence.getSecondRecord().getValue());
         }
 
-        assertEquals(birthdate.getHeader(), resultList.get(born.getHeader()));
-        assertEquals(empName.getHeader(), resultList.get(pno.getHeader()));
-        assertEquals(deptNo.getHeader(), resultList.get(dept.getHeader()));
-        assertEquals(empNo.getHeader(), resultList.get(pname.getHeader()));
+        assertEquals(birthdate.getValue(), resultList.get(born.getValue()));
+        assertEquals(empNo.getValue(), resultList.get(pno.getValue()));
+        assertEquals(empName.getValue(), resultList.get(dept.getValue()));
+        assertEquals(salary.getValue(), resultList.get(pname.getValue()));
     }
 
     @Test
     public void testShouldRunSimilarityFloodingAlgorithm_1_REMOVE_OID() {
         // prepare
-        List<MatchableTableColumn> columnsSchemaOne = new ArrayList<>();
-        MatchableTableColumn pno = new MatchableTableColumn(0, 0, "Pno", DataType.numeric);
+        List<SFTestMatchable> columnsSchemaOne = new ArrayList<>();
+        SFTestMatchable pno = new SFTestMatchable(DataType.numeric, "Pno", "Pno");
         columnsSchemaOne.add(pno);
-        MatchableTableColumn pname = new MatchableTableColumn(0, 1, "Pname", DataType.string);
+        SFTestMatchable pname = new SFTestMatchable(DataType.string, "Pname", "Pname");
         columnsSchemaOne.add(pname);
-        MatchableTableColumn dept = new MatchableTableColumn(0, 2, "Dept", DataType.string);
+        SFTestMatchable dept = new SFTestMatchable(DataType.string, "Dept", "Dept");
         columnsSchemaOne.add(dept);
-        MatchableTableColumn born = new MatchableTableColumn(0, 3, "Born", DataType.date);
+        SFTestMatchable born = new SFTestMatchable(DataType.date, "Born", "Born");
         columnsSchemaOne.add(born);
 
-        SimilarityFloodingSchema schema1 = new SimilarityFloodingSchema("Personnel", columnsSchemaOne);
-
-        List<MatchableTableColumn> columnsSchemaTwo = new ArrayList<>();
-        MatchableTableColumn empNo = new MatchableTableColumn(1, 0, "EmpNo", DataType.numeric);
+        List<SFTestMatchable> columnsSchemaTwo = new ArrayList<>();
+        SFTestMatchable empNo = new SFTestMatchable(DataType.numeric, "EmpNo", "EmpNo");
         columnsSchemaTwo.add(empNo);
-        MatchableTableColumn empName = new MatchableTableColumn(1, 1, "EmpName", DataType.string);
+        SFTestMatchable empName = new SFTestMatchable(DataType.string, "EmpName", "EmpName");
         columnsSchemaTwo.add(empName);
-        MatchableTableColumn deptNo = new MatchableTableColumn(1, 2, "DepNo", DataType.numeric);
+        SFTestMatchable deptNo = new SFTestMatchable(DataType.numeric, "DepNo", "DepNo");
         columnsSchemaTwo.add(deptNo);
-        MatchableTableColumn salary = new MatchableTableColumn(1, 3, "Salary", DataType.numeric);
+        SFTestMatchable salary = new SFTestMatchable(DataType.numeric, "Salary", "Salary");
         columnsSchemaTwo.add(salary);
-        MatchableTableColumn birthdate = new MatchableTableColumn(1, 4, "Birthdate", DataType.date);
+        SFTestMatchable birthdate = new SFTestMatchable(DataType.date, "Birthdate", "Birthdate");
         columnsSchemaTwo.add(birthdate);
 
-        SimilarityFloodingSchema schema2 = new SimilarityFloodingSchema("Employee", columnsSchemaTwo);
-
-        SimilarityFloodingAlgorithm similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm(schema1, schema2);
+        SimilarityFloodingAlgorithm<SFTestMatchable, SFTestMatchable> similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm<>("Personnel", columnsSchemaOne, "Employee", columnsSchemaTwo,
+            new SFComparatorLevenshtein());
         similarityFloodingAlgorithm.setRemoveOid(true);
 
         // run
         similarityFloodingAlgorithm.run();
 
         // validate
-        Processable<Correspondence<MatchableTableColumn, MatchableTableColumn>> result = similarityFloodingAlgorithm.getResult();
+        Processable<Correspondence<SFTestMatchable, SFTestMatchable>> result = similarityFloodingAlgorithm.getResult();
 
         HashMap<String, String> resultList = new HashMap<>();
-        for (Correspondence<MatchableTableColumn, MatchableTableColumn> correspondence : result.get()) {
-            resultList.put(correspondence.getFirstRecord().getHeader(), correspondence.getSecondRecord().getHeader());
+        for (Correspondence<SFTestMatchable, SFTestMatchable> correspondence : result.get()) {
+            resultList.put(correspondence.getFirstRecord().getValue(), correspondence.getSecondRecord().getValue());
         }
 
-        assertEquals(birthdate.getHeader(), resultList.get(born.getHeader()));
-        assertEquals(empName.getHeader(), resultList.get(pno.getHeader()));
-        assertEquals(deptNo.getHeader(), resultList.get(pname.getHeader()));
-        assertEquals(salary.getHeader(), resultList.get(dept.getHeader()));
+        assertEquals(birthdate.getValue(), resultList.get(born.getValue()));
+        assertEquals(empName.getValue(), resultList.get(pno.getValue()));
+        assertEquals(deptNo.getValue(), resultList.get(pname.getValue()));
+        assertEquals(salary.getValue(), resultList.get(dept.getValue()));
     }
 
-    private HashMap<String, HashMap<String, Double>> getResultMap(SimilarityFloodingAlgorithm similarityFloodingAlgorithm) {
+    private HashMap<String, HashMap<String, Double>> getResultMap(SimilarityFloodingAlgorithm<SFTestMatchable, SFTestMatchable> similarityFloodingAlgorithm) {
         SimpleDirectedGraph<IPGNode, CoeffEdge> ipg = similarityFloodingAlgorithm.getIpg();
-        List<IPGNode> ipgList = ipg.vertexSet().stream().collect(Collectors.toList());
+        List<IPGNode> ipgList = new ArrayList<>(ipg.vertexSet());
         List<IPGNode> ipgListWithoutOid = ipgList.stream()
-            .filter(x -> !x.getPairwiseConnectivityNode().getA().getValue().contains("&") && !x.getPairwiseConnectivityNode().getB().getValue().contains("&")).collect(Collectors.toList());
+            .filter(x -> !x.getPairwiseConnectivityNode().getA().getGetIdentifier().contains("&") && !x.getPairwiseConnectivityNode().getB().getGetIdentifier().contains("&"))
+            .collect(Collectors.toList());
 
         HashMap<String, HashMap<String, Double>> nodeSimMap = new HashMap<>();
         for (IPGNode node : ipgListWithoutOid) {
-            String a = node.getPairwiseConnectivityNode().getA().getValue();
-            String b = node.getPairwiseConnectivityNode().getB().getValue();
+            String a = node.getPairwiseConnectivityNode().getA().getGetIdentifier();
+            String b = node.getPairwiseConnectivityNode().getB().getGetIdentifier();
             Double sim = node.getCurrSim();
             if (!nodeSimMap.containsKey(a)) {
                 nodeSimMap.put(a, new HashMap<>());

@@ -12,22 +12,24 @@
 package de.uni_mannheim.informatik.dws.winter.usecase.web_movie;
 
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.SimilarityFloodingAlgorithm;
-import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.SimilarityFloodingSchema;
+import de.uni_mannheim.informatik.dws.winter.matching.rules.comparators.Comparator;
+import de.uni_mannheim.informatik.dws.winter.matching.rules.comparators.ComparatorLogger;
 import de.uni_mannheim.informatik.dws.winter.model.Correspondence;
 import de.uni_mannheim.informatik.dws.winter.model.DataSet;
 import de.uni_mannheim.informatik.dws.winter.model.HashedDataSet;
+import de.uni_mannheim.informatik.dws.winter.model.Matchable;
 import de.uni_mannheim.informatik.dws.winter.model.defaultmodel.Attribute;
 import de.uni_mannheim.informatik.dws.winter.model.defaultmodel.CSVRecordReader;
 import de.uni_mannheim.informatik.dws.winter.model.defaultmodel.Record;
 import de.uni_mannheim.informatik.dws.winter.preprocessing.datatypes.ColumnType;
 import de.uni_mannheim.informatik.dws.winter.preprocessing.datatypes.DataType;
 import de.uni_mannheim.informatik.dws.winter.processing.Processable;
+import de.uni_mannheim.informatik.dws.winter.similarity.string.LevenshteinSimilarity;
 import de.uni_mannheim.informatik.dws.winter.utils.WinterLogManager;
-import de.uni_mannheim.informatik.dws.winter.webtables.MatchableTableColumn;
+import de.uni_mannheim.informatik.dws.winter.webtables.SFMatchable;
 import de.uni_mannheim.informatik.dws.winter.webtables.detectors.tabletypeclassifier.TypeClassifier;
 import java.io.File;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import org.slf4j.Logger;
 
@@ -39,13 +41,6 @@ public class Movies_SimilarityFloodingSchemaMatching {
     private static final Logger logger = WinterLogManager.activateLogger("default");
 
     public static void main(String[] args) throws Exception {
-        HashMap<String, String> goldStandard = new HashMap<>();
-        goldStandard.put("title", "rdf-schema#label");
-        goldStandard.put("year", "releaseDate");
-        goldStandard.put("director", "director");
-        goldStandard.put("writer", "writer");
-        goldStandard.put("length", "duration");
-
         // load data
         DataSet<Record, Attribute> data1 = new HashedDataSet<>();
         new CSVRecordReader(0).loadFromCSV(new File("usecase/webtable_movie/input/Film.csv"), data1);
@@ -54,28 +49,25 @@ public class Movies_SimilarityFloodingSchemaMatching {
 
         // Initialize Matching Engine
 
-        SimilarityFloodingSchema schema1 = getSimilarityFloodingSchema(data1);
-        SimilarityFloodingSchema schema2 = getSimilarityFloodingSchema(data2);
-
-        SimilarityFloodingAlgorithm similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm(schema2, schema1);
-        similarityFloodingAlgorithm.setRemoveOid(true);
-        similarityFloodingAlgorithm.run();
-        Processable<Correspondence<MatchableTableColumn, MatchableTableColumn>> correspondences = similarityFloodingAlgorithm.getResult();
+        SimilarityFloodingAlgorithm<SFTestMatchable, SFTestMatchable> sf = new SimilarityFloodingAlgorithm<>(getSimilarityFloodingSchema(data2), getSimilarityFloodingSchema(data1),
+            new SFComparatorLevenshtein());
+        sf.setRemoveOid(true);
+        sf.run();
+        Processable<Correspondence<SFTestMatchable, SFTestMatchable>> correspondences = sf.getResult();
 
         // print results
-        for (Correspondence<MatchableTableColumn, MatchableTableColumn> cor : correspondences.get()) {
+        for (Correspondence<SFTestMatchable, SFTestMatchable> cor : correspondences.get()) {
             logger.info(String.format("[%s]'%s' <-> [%s]'%s' (%.4f)",
                 cor.getFirstRecord().getIdentifier(),
-                cor.getFirstRecord().getHeader(),
+                cor.getFirstRecord().getValue(),
                 cor.getSecondRecord().getIdentifier(),
-                cor.getSecondRecord().getHeader(),
+                cor.getSecondRecord().getValue(),
                 cor.getSimilarityScore()));
         }
     }
 
-    private static SimilarityFloodingSchema getSimilarityFloodingSchema(DataSet<Record, Attribute> data1) {
-        List<MatchableTableColumn> schema1List = new ArrayList<>();
-        SimilarityFloodingSchema schema1 = new SimilarityFloodingSchema("Film", schema1List);
+    private static List<SFTestMatchable> getSimilarityFloodingSchema(DataSet<Record, Attribute> data1) {
+        List<SFTestMatchable> schema1List = new ArrayList<>();
 
         TypeClassifier typeClassifier = new TypeClassifier();
         typeClassifier.initialize();
@@ -104,9 +96,59 @@ public class Movies_SimilarityFloodingSchemaMatching {
             if (ty.equals(DataType.unit)) {
                 ty = DataType.numeric;
             }
-            schema1List.add(new MatchableTableColumn(0, count++, attribute.getName(), ty));
+            schema1List.add(new SFTestMatchable(ty, attribute.getName(), attribute.getName()));
         }
-        return schema1;
+        return schema1List;
+    }
+
+    public static class SFComparatorLevenshtein implements Comparator<SFTestMatchable, SFTestMatchable> {
+
+        private static final long serialVersionUID = 1L;
+        private final LevenshteinSimilarity similarity = new LevenshteinSimilarity();
+        private ComparatorLogger comparisonLog;
+
+
+        @Override
+        public double compare(SFTestMatchable record1, SFTestMatchable record2, Correspondence<SFTestMatchable, Matchable> schemaCorrespondence) {
+            return similarity.calculate(record1.getValue(), record2.getValue());
+        }
+
+        @Override
+        public ComparatorLogger getComparisonLog() {
+            return this.comparisonLog;
+        }
+
+        @Override
+        public void setComparisonLog(ComparatorLogger comparatorLog) {
+            this.comparisonLog = comparatorLog;
+        }
+
+    }
+
+    private static class SFTestMatchable extends SFMatchable {
+
+        private final String id;
+        private final String value;
+
+        public SFTestMatchable(DataType type, String id, String value) {
+            super(type);
+            this.id = id;
+            this.value = value;
+        }
+
+        public String getValue() {
+            return value;
+        }
+
+        @Override
+        public String getIdentifier() {
+            return id;
+        }
+
+        @Override
+        public String getProvenance() {
+            return null;
+        }
     }
 
 }

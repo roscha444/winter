@@ -5,26 +5,41 @@ package de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.pcg;
  *
  * @author Robin Schumacher (info@robin-schumacher.com)
  */
-public class SFNode {
+public class SFNode<TypeA> {
 
-    protected String value;
-
+    private String getIdentifier;
     private final SFNodeType type;
+    private TypeA matchable;
 
-    public SFNode(String value, SFNodeType type) {
-        this.value = value;
+    public SFNode(String getIdentifier, SFNodeType type) {
+        this.getIdentifier = getIdentifier;
         this.type = type;
+        this.matchable = null;
+    }
+
+    public SFNode(String getIdentifier, SFNodeType type, TypeA matchable) {
+        this.getIdentifier = getIdentifier;
+        this.type = type;
+        this.matchable = matchable;
+    }
+
+    public TypeA getMatchable() {
+        return matchable;
+    }
+
+    public void setMatchable(TypeA matchable) {
+        this.matchable = matchable;
     }
 
     public SFNodeType getType() {
         return type;
     }
 
-    public String getValue() {
-        return value;
+    public String getGetIdentifier() {
+        return getIdentifier;
     }
 
-    public void setValue(String value) {
-        this.value = value;
+    public void setGetIdentifier(String getIdentifier) {
+        this.getIdentifier = getIdentifier;
     }
 }
