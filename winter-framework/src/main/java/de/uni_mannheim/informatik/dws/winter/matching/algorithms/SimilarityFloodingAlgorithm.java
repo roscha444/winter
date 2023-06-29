@@ -54,7 +54,7 @@ public class SimilarityFloodingAlgorithm<TypeA extends SFMatchable, TypeB extend
     private double epsilon = 0.000000000000002;
     private int maxSteps = 1000;
     private double defaultSim = 0.0;
-    private double minSim = 0.00000000000001;
+    private double minSim = 0.00001;
     private boolean removeOid = false;
 
     public SimilarityFloodingAlgorithm(String schemaAName, List<TypeA> schemaA, String schemaBName, List<TypeA> schemaB, Comparator<TypeA, TypeA> labelComparator) {
@@ -475,10 +475,20 @@ public class SimilarityFloodingAlgorithm<TypeA extends SFMatchable, TypeB extend
             for (SFNode<TypeA> nodeFromB : schemaGraphB.vertexSet()) {
 
                 double sim;
-                if (nodeFromA.getMatchable() == null || nodeFromB.getMatchable() == null || nodeFromA.getGetIdentifier().equals("string") && nodeFromB.getGetIdentifier().equals("numeric")
-                    || nodeFromA.getGetIdentifier().equals("numeric") && nodeFromB.getGetIdentifier()
-                    .equals("string")) {
-                    sim = 0.0001;
+                if (nodeFromA.getMatchable() == null || nodeFromB.getMatchable() == null
+                    || nodeFromA.getGetIdentifier().equals("string")
+                    || nodeFromA.getGetIdentifier().equals("numeric")
+                    || nodeFromA.getGetIdentifier().equals("date")
+                    || nodeFromA.getGetIdentifier().equals("bool")
+                    || nodeFromA.getGetIdentifier().equals("link")
+                    || nodeFromA.getGetIdentifier().equals("unit")
+                    || nodeFromB.getGetIdentifier().equals("string")
+                    || nodeFromB.getGetIdentifier().equals("numeric")
+                    || nodeFromB.getGetIdentifier().equals("date")
+                    || nodeFromB.getGetIdentifier().equals("bool")
+                    || nodeFromB.getGetIdentifier().equals("unit")
+                ) {
+                    sim = defaultSim;
                 } else {
                     sim = labelComparator.compare(nodeFromA.getMatchable(), nodeFromB.getMatchable(), null);
                 }
