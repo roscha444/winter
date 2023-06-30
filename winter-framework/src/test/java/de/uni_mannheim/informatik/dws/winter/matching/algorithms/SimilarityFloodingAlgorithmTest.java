@@ -79,6 +79,14 @@ public class SimilarityFloodingAlgorithmTest {
         public String getProvenance() {
             return null;
         }
+
+        @Override
+        public String toString() {
+            return "SFTestMatchable{" +
+                "id='" + id + '\'' +
+                ", value='" + value + '\'' +
+                '}';
+        }
     }
 
     @Test
@@ -135,7 +143,7 @@ public class SimilarityFloodingAlgorithmTest {
         modelB.addEdge(b2, b1, new LabeledEdge(LabeledEdgeType.TYPE));
 
         //execute
-        SimpleDirectedGraph<PairwiseConnectivityNode, LabeledEdge> pairwiseConnectivityGraph = similarityFloodingAlgorithm.generatePairwiseConnectivityGraph(modelA, modelB);
+        SimpleDirectedGraph<PairwiseConnectivityNode<SFTestMatchable>, LabeledEdge> pairwiseConnectivityGraph = similarityFloodingAlgorithm.generatePairwiseConnectivityGraph(modelA, modelB);
 
         //validate
         assertEquals(4, pairwiseConnectivityGraph.edgeSet().size());
@@ -174,9 +182,9 @@ public class SimilarityFloodingAlgorithmTest {
         modelB.addEdge(b, b2, new LabeledEdge(LabeledEdgeType.TYPE));
         modelB.addEdge(b2, b1, new LabeledEdge(LabeledEdgeType.TYPE));
 
-        SimpleDirectedGraph<PairwiseConnectivityNode, LabeledEdge> pairwiseConnectivityGraph = similarityFloodingAlgorithm.generatePairwiseConnectivityGraph(modelA, modelB);
+        SimpleDirectedGraph<PairwiseConnectivityNode<SFTestMatchable>, LabeledEdge> pairwiseConnectivityGraph = similarityFloodingAlgorithm.generatePairwiseConnectivityGraph(modelA, modelB);
         //execute
-        SimpleDirectedGraph<IPGNode, CoeffEdge> inducedPropagationGraph = similarityFloodingAlgorithm.generateInducedPropagationGraph(modelA, modelB, pairwiseConnectivityGraph);
+        SimpleDirectedGraph<IPGNode<SFTestMatchable>, CoeffEdge> inducedPropagationGraph = similarityFloodingAlgorithm.generateInducedPropagationGraph(modelA, modelB, pairwiseConnectivityGraph);
 
         //validate
         assertEquals(8, inducedPropagationGraph.edgeSet().size());
@@ -215,8 +223,8 @@ public class SimilarityFloodingAlgorithmTest {
         modelB.addEdge(b, b2, new LabeledEdge(LabeledEdgeType.TYPE));
         modelB.addEdge(b2, b1, new LabeledEdge(LabeledEdgeType.TYPE));
 
-        SimpleDirectedGraph<PairwiseConnectivityNode, LabeledEdge> pairwiseConnectivityGraph = similarityFloodingAlgorithm.generatePairwiseConnectivityGraph(modelA, modelB);
-        SimpleDirectedGraph<IPGNode, CoeffEdge> inducedPropagationGraph = similarityFloodingAlgorithm.generateInducedPropagationGraph(modelA, modelB, pairwiseConnectivityGraph);
+        SimpleDirectedGraph<PairwiseConnectivityNode<SFTestMatchable>, LabeledEdge> pairwiseConnectivityGraph = similarityFloodingAlgorithm.generatePairwiseConnectivityGraph(modelA, modelB);
+        SimpleDirectedGraph<IPGNode<SFTestMatchable>, CoeffEdge> inducedPropagationGraph = similarityFloodingAlgorithm.generateInducedPropagationGraph(modelA, modelB, pairwiseConnectivityGraph);
         //execute
         similarityFloodingAlgorithm.similarityFlooding(inducedPropagationGraph, 1000);
 
@@ -398,15 +406,137 @@ public class SimilarityFloodingAlgorithmTest {
         assertEquals(salary.getValue(), resultList.get(dept.getValue()));
     }
 
+    @Test
+    public void testShouldRunSimilarityFloodingAlgorithm_2_REMOVE_OID() {
+        // prepare
+        List<SFTestMatchable> columnsSchemaOne = new ArrayList<>();
+        SFTestMatchable areaTotal = new SFTestMatchable(DataType.numeric, "areatotal", "areatotal");
+        columnsSchemaOne.add(areaTotal);
+        SFTestMatchable city = new SFTestMatchable(DataType.string, "city", "city");
+        columnsSchemaOne.add(city);
+        SFTestMatchable country = new SFTestMatchable(DataType.string, "country", "country");
+        columnsSchemaOne.add(country);
+
+        List<SFTestMatchable> columnsSchemaTwo = new ArrayList<>();
+        SFTestMatchable areaTotal2 = new SFTestMatchable(DataType.numeric, "areaTotal", "areaTotal");
+        columnsSchemaTwo.add(areaTotal2);
+        SFTestMatchable country2 = new SFTestMatchable(DataType.string, "country", "country");
+        columnsSchemaTwo.add(country2);
+        SFTestMatchable state = new SFTestMatchable(DataType.string, "state", "state");
+        columnsSchemaTwo.add(state);
+
+        SimilarityFloodingAlgorithm<SFTestMatchable, SFTestMatchable> similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm<>("Personnel", columnsSchemaOne, "Employee", columnsSchemaTwo,
+            new SFComparatorLevenshtein());
+        similarityFloodingAlgorithm.setRemoveOid(true);
+
+        // run
+        similarityFloodingAlgorithm.run();
+
+        // validate
+        Processable<Correspondence<SFTestMatchable, SFTestMatchable>> result = similarityFloodingAlgorithm.getResult();
+
+        HashMap<String, String> resultList = new HashMap<>();
+        for (Correspondence<SFTestMatchable, SFTestMatchable> correspondence : result.get()) {
+            resultList.put(correspondence.getFirstRecord().getValue(), correspondence.getSecondRecord().getValue());
+        }
+
+        assertEquals(areaTotal2.getValue(), resultList.get(areaTotal.getValue()));
+        assertEquals(country2.getValue(), resultList.get(country.getValue()));
+        assertEquals(state.getValue(), resultList.get(city.getValue()));
+    }
+
+    @Test
+    public void testShouldRunSimilarityFloodingAlgorithm_2() {
+        // prepare
+        List<SFTestMatchable> columnsSchemaOne = new ArrayList<>();
+        SFTestMatchable areaTotal = new SFTestMatchable(DataType.numeric, "areatotal", "areatotal");
+        columnsSchemaOne.add(areaTotal);
+        SFTestMatchable city = new SFTestMatchable(DataType.string, "city", "city");
+        columnsSchemaOne.add(city);
+        SFTestMatchable country = new SFTestMatchable(DataType.string, "country", "country");
+        columnsSchemaOne.add(country);
+
+        List<SFTestMatchable> columnsSchemaTwo = new ArrayList<>();
+        SFTestMatchable areaTotal2 = new SFTestMatchable(DataType.numeric, "areaTotal", "areaTotal");
+        columnsSchemaTwo.add(areaTotal2);
+        SFTestMatchable country2 = new SFTestMatchable(DataType.string, "country", "country");
+        columnsSchemaTwo.add(country2);
+        SFTestMatchable state = new SFTestMatchable(DataType.string, "state", "state");
+        columnsSchemaTwo.add(state);
+
+        SimilarityFloodingAlgorithm<SFTestMatchable, SFTestMatchable> similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm<>("Personnel", columnsSchemaOne, "Employee", columnsSchemaTwo,
+            new SFComparatorLevenshtein());
+        similarityFloodingAlgorithm.setRemoveOid(false);
+
+        // run
+        similarityFloodingAlgorithm.run();
+
+        // validate
+        Processable<Correspondence<SFTestMatchable, SFTestMatchable>> result = similarityFloodingAlgorithm.getResult();
+
+        HashMap<String, String> resultList = new HashMap<>();
+        for (Correspondence<SFTestMatchable, SFTestMatchable> correspondence : result.get()) {
+            resultList.put(correspondence.getFirstRecord().getValue(), correspondence.getSecondRecord().getValue());
+        }
+
+        assertEquals(areaTotal2.getValue(), resultList.get(areaTotal.getValue()));
+        assertEquals(country2.getValue(), resultList.get(country.getValue()));
+        assertEquals(state.getValue(), resultList.get(city.getValue()));
+    }
+
+    @Test
+    public void testShouldRunSimilarityFloodingAlgorithm_3() {
+        // prepare
+        List<SFTestMatchable> columnsSchemaOne = new ArrayList<>();
+        SFTestMatchable areaTotal = new SFTestMatchable(DataType.numeric, "areatotal", "areatotal");
+        columnsSchemaOne.add(areaTotal);
+        SFTestMatchable city = new SFTestMatchable(DataType.string, "city", "city");
+        columnsSchemaOne.add(city);
+        SFTestMatchable country = new SFTestMatchable(DataType.string, "country", "country");
+        columnsSchemaOne.add(country);
+        SFTestMatchable name = new SFTestMatchable(DataType.string, "name", "name");
+        columnsSchemaOne.add(name);
+
+        List<SFTestMatchable> columnsSchemaTwo = new ArrayList<>();
+        SFTestMatchable areaTotal2 = new SFTestMatchable(DataType.numeric, "areaTotal", "areaTotal");
+        columnsSchemaTwo.add(areaTotal2);
+        SFTestMatchable country2 = new SFTestMatchable(DataType.string, "country", "country");
+        columnsSchemaTwo.add(country2);
+        SFTestMatchable state = new SFTestMatchable(DataType.string, "state", "state");
+        columnsSchemaTwo.add(state);
+        SFTestMatchable area = new SFTestMatchable(DataType.string, "area", "area");
+        columnsSchemaTwo.add(area);
+
+        SimilarityFloodingAlgorithm<SFTestMatchable, SFTestMatchable> similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm<>("Personnel", columnsSchemaOne, "Employee", columnsSchemaTwo,
+            new SFComparatorLevenshtein());
+        similarityFloodingAlgorithm.setRemoveOid(false);
+
+        // run
+        similarityFloodingAlgorithm.run();
+
+        // validate
+        Processable<Correspondence<SFTestMatchable, SFTestMatchable>> result = similarityFloodingAlgorithm.getResult();
+
+        HashMap<String, String> resultList = new HashMap<>();
+        for (Correspondence<SFTestMatchable, SFTestMatchable> correspondence : result.get()) {
+            resultList.put(correspondence.getFirstRecord().getValue(), correspondence.getSecondRecord().getValue());
+        }
+
+        assertEquals(areaTotal2.getValue(), resultList.get(areaTotal.getValue()));
+        assertEquals(country2.getValue(), resultList.get(country.getValue()));
+        assertEquals(area.getValue(), resultList.get(city.getValue()));
+        assertEquals(state.getValue(), resultList.get(name.getValue()));
+    }
+
     private HashMap<String, HashMap<String, Double>> getResultMap(SimilarityFloodingAlgorithm<SFTestMatchable, SFTestMatchable> similarityFloodingAlgorithm) {
-        SimpleDirectedGraph<IPGNode, CoeffEdge> ipg = similarityFloodingAlgorithm.getIpg();
-        List<IPGNode> ipgList = new ArrayList<>(ipg.vertexSet());
-        List<IPGNode> ipgListWithoutOid = ipgList.stream()
+        SimpleDirectedGraph<IPGNode<SFTestMatchable>, CoeffEdge> ipg = similarityFloodingAlgorithm.getIpg();
+        List<IPGNode<SFTestMatchable>> ipgList = new ArrayList<>(ipg.vertexSet());
+        List<IPGNode<SFTestMatchable>> ipgListWithoutOid = ipgList.stream()
             .filter(x -> !x.getPairwiseConnectivityNode().getA().getGetIdentifier().contains("&") && !x.getPairwiseConnectivityNode().getB().getGetIdentifier().contains("&"))
             .collect(Collectors.toList());
 
         HashMap<String, HashMap<String, Double>> nodeSimMap = new HashMap<>();
-        for (IPGNode node : ipgListWithoutOid) {
+        for (IPGNode<SFTestMatchable> node : ipgListWithoutOid) {
             String a = node.getPairwiseConnectivityNode().getA().getGetIdentifier();
             String b = node.getPairwiseConnectivityNode().getB().getGetIdentifier();
             Double sim = node.getCurrSim();

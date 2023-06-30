@@ -39,21 +39,14 @@ public class SimilarityFloodingAlgorithm<TypeA extends SFMatchable, TypeB extend
     private final List<TypeA> schemaA;
     private String schemaBName = "B";
     private final List<TypeA> schemaB;
-
-    private Comparator<TypeA, TypeA> labelComparator;
-
-    private SimpleDirectedGraph<SFNode<TypeA>, LabeledEdge> schemaGraphA;
-    private SimpleDirectedGraph<SFNode<TypeA>, LabeledEdge> schemaGraphB;
-
-
-    private SimpleDirectedGraph<IPGNode, CoeffEdge> ipg;
-    private SimpleDirectedGraph<PairwiseConnectivityNode, LabeledEdge> pcg;
+    private final Comparator<TypeA, TypeA> labelComparator;
+    private SimpleDirectedGraph<IPGNode<TypeA>, CoeffEdge> ipg;
     private ProcessableCollection<Correspondence<TypeA, TypeB>> result;
 
     // Default values for SF
-    private double epsilon = 0.000000000000002;
+    private double epsilon = 0.00002;
     private int maxSteps = 1000;
-    private double defaultSim = 0.0;
+    private double defaultSim = 0.01;
     private double minSim = 0.00001;
     private boolean removeOid = false;
 
@@ -72,15 +65,15 @@ public class SimilarityFloodingAlgorithm<TypeA extends SFMatchable, TypeB extend
     }
 
     public void run() {
-        schemaGraphA = createGraphForSchema(schemaA, schemaAName);
-        schemaGraphB = createGraphForSchema(schemaB, schemaBName);
+        SimpleDirectedGraph<SFNode<TypeA>, LabeledEdge> schemaGraphA = createGraphForSchema(schemaA, schemaAName);
+        SimpleDirectedGraph<SFNode<TypeA>, LabeledEdge> schemaGraphB = createGraphForSchema(schemaB, schemaBName);
 
         if (removeOid) {
             removeOidFromGraph(schemaGraphA);
             removeOidFromGraph(schemaGraphB);
         }
 
-        pcg = generatePairwiseConnectivityGraph(schemaGraphA, schemaGraphB);
+        SimpleDirectedGraph<PairwiseConnectivityNode<TypeA>, LabeledEdge> pcg = generatePairwiseConnectivityGraph(schemaGraphA, schemaGraphB);
         ipg = generateInducedPropagationGraph(schemaGraphA, schemaGraphB, pcg);
 
         similarityFlooding(ipg, maxSteps);
@@ -88,21 +81,20 @@ public class SimilarityFloodingAlgorithm<TypeA extends SFMatchable, TypeB extend
         List<Pair<Pair<SFNode<TypeA>, SFNode<TypeA>>, Double>> engagements = filterStableMarriage(ipg);
 
         result = new ProcessableCollection<>();
-        logger.trace("Final result after filter application:");
+        logger.info("Final result after filter application:");
         for (Pair<Pair<SFNode<TypeA>, SFNode<TypeA>>, Double> entry : engagements) {
             Pair<SFNode<TypeA>, SFNode<TypeA>> pair = entry.getFirst();
             if (pair.getFirst() == null) {
-                logger.trace("no_match_found");
+                logger.info("no_match_found");
             } else {
-                logger.trace(pair.getFirst().toString());
+                logger.info(pair.getFirst().toString());
             }
-            logger.trace("<->");
+            logger.info("< - " + entry.getSecond() + " - >");
             if (pair.getSecond() == null) {
-                logger.trace("no_match_found");
+                logger.info("no_match_found" + "\n");
             } else {
-                logger.trace(pair.getSecond().toString());
+                logger.info(pair.getSecond().toString() + "\n");
             }
-            logger.trace("\n");
 
             // CHECK
             if (pair.getFirst() == null || pair.getSecond() == null || pair.getSecond().getMatchable() == null || pair.getFirst().getMatchable() == null) {
@@ -145,7 +137,7 @@ public class SimilarityFloodingAlgorithm<TypeA extends SFMatchable, TypeB extend
         return graph;
     }
 
-    private List<Pair<Pair<SFNode<TypeA>, SFNode<TypeA>>, Double>> filterStableMarriage(SimpleDirectedGraph<IPGNode, CoeffEdge> ipg) {
+    private List<Pair<Pair<SFNode<TypeA>, SFNode<TypeA>>, Double>> filterStableMarriage(SimpleDirectedGraph<IPGNode<TypeA>, CoeffEdge> ipg) {
         List<Pair<Pair<SFNode<TypeA>, SFNode<TypeA>>, Double>> engagements = new ArrayList<>();
 
         HashMap<SFNode<TypeA>, Pair<Pair<Double, SFNode<TypeA>>, List<Pair<Double, SFNode<TypeA>>>>> schema1Engagements = new HashMap<>();
@@ -198,7 +190,8 @@ public class SimilarityFloodingAlgorithm<TypeA extends SFMatchable, TypeB extend
         return engagements;
     }
 
-    private void initEngagementsSchemas(SimpleDirectedGraph<IPGNode, CoeffEdge> ipg, HashMap<SFNode<TypeA>, Pair<Pair<Double, SFNode<TypeA>>, List<Pair<Double, SFNode<TypeA>>>>> schema1Engagements,
+    private void initEngagementsSchemas(SimpleDirectedGraph<IPGNode<TypeA>, CoeffEdge> ipg,
+        HashMap<SFNode<TypeA>, Pair<Pair<Double, SFNode<TypeA>>, List<Pair<Double, SFNode<TypeA>>>>> schema1Engagements,
         HashMap<SFNode<TypeA>, Pair<Double, SFNode<TypeA>>> schema2Engagements) {
         HashMap<SFNode<TypeA>, HashMap<SFNode<TypeA>, Double>> schema = clearSfCompressed(ipg);
 
@@ -223,9 +216,9 @@ public class SimilarityFloodingAlgorithm<TypeA extends SFMatchable, TypeB extend
         }
     }
 
-    private HashMap<SFNode<TypeA>, HashMap<SFNode<TypeA>, Double>> clearSfCompressed(SimpleDirectedGraph<IPGNode, CoeffEdge> ipg) {
+    private HashMap<SFNode<TypeA>, HashMap<SFNode<TypeA>, Double>> clearSfCompressed(SimpleDirectedGraph<IPGNode<TypeA>, CoeffEdge> ipg) {
         HashMap<SFNode<TypeA>, HashMap<SFNode<TypeA>, Double>> nodeSimMap = new HashMap<>();
-        for (IPGNode node : ipg.vertexSet()) {
+        for (IPGNode<TypeA> node : ipg.vertexSet()) {
             SFNode<TypeA> nodeA = node.getPairwiseConnectivityNode().getA();
             SFNode<TypeA> nodeB = node.getPairwiseConnectivityNode().getB();
             if (node.getCurrSim() > minSim && (removeOid || nodeA.getType().equals(SFNodeType.LITERAL) && nodeB.getType().equals(SFNodeType.LITERAL))) {
@@ -238,28 +231,28 @@ public class SimilarityFloodingAlgorithm<TypeA extends SFMatchable, TypeB extend
         return nodeSimMap;
     }
 
-    void similarityFlooding(SimpleDirectedGraph<IPGNode, CoeffEdge> ipg, int maxSteps) {
+    void similarityFlooding(SimpleDirectedGraph<IPGNode<TypeA>, CoeffEdge> ipg, int maxSteps) {
         for (int i = 0; i < maxSteps; i++) {
             boolean cont = similarityFloodingStep(ipg);
 
             if (!cont) {
-                logger.trace("Terminated: vector has length less than epsilon");
+                logger.info("Terminated: vector has length less than epsilon");
                 break;
             }
         }
     }
 
-    boolean similarityFloodingStep(SimpleDirectedGraph<IPGNode, CoeffEdge> ipg) {
+    boolean similarityFloodingStep(SimpleDirectedGraph<IPGNode<TypeA>, CoeffEdge> ipg) {
         double maxSim = 0;
         double delta = 0;
 
-        for (IPGNode node : ipg.vertexSet()) {
+        for (IPGNode<TypeA> node : ipg.vertexSet()) {
             double newSim = fixpointIncremental(node, ipg);
             maxSim = Math.max(maxSim, newSim);
             node.setNextSim(newSim);
         }
 
-        for (IPGNode node : ipg.vertexSet()) {
+        for (IPGNode<TypeA> node : ipg.vertexSet()) {
             double newCurrSim = node.getNextSim() / maxSim;
             delta += Math.pow((node.getCurrSim() - newCurrSim), 2);
             node.setCurrSim(newCurrSim);
@@ -268,7 +261,7 @@ public class SimilarityFloodingAlgorithm<TypeA extends SFMatchable, TypeB extend
         return Math.sqrt(delta) >= epsilon;
     }
 
-    private double fixpointIncremental(IPGNode node, SimpleDirectedGraph<IPGNode, CoeffEdge> ipg) {
+    private double fixpointIncremental(IPGNode<TypeA> node, SimpleDirectedGraph<IPGNode<TypeA>, CoeffEdge> ipg) {
         double increment = 0;
 
         for (CoeffEdge coeffEdge : ipg.incomingEdgesOf(node)) {
@@ -278,31 +271,31 @@ public class SimilarityFloodingAlgorithm<TypeA extends SFMatchable, TypeB extend
         return node.getCurrSim() + increment;
     }
 
-    SimpleDirectedGraph<PairwiseConnectivityNode, LabeledEdge> generatePairwiseConnectivityGraph(SimpleDirectedGraph<SFNode<TypeA>, LabeledEdge> schemaGraphA,
+    SimpleDirectedGraph<PairwiseConnectivityNode<TypeA>, LabeledEdge> generatePairwiseConnectivityGraph(SimpleDirectedGraph<SFNode<TypeA>, LabeledEdge> schemaGraphA,
         SimpleDirectedGraph<SFNode<TypeA>, LabeledEdge> schemaGraphB) {
-        SimpleDirectedGraph<PairwiseConnectivityNode, LabeledEdge> pcg = new SimpleDirectedGraph<>(LabeledEdge.class);
-        HashMap<SFNode<TypeA>, HashMap<SFNode<TypeA>, PairwiseConnectivityNode>> nodeMap = new HashMap<>();
+        SimpleDirectedGraph<PairwiseConnectivityNode<TypeA>, LabeledEdge> pcg = new SimpleDirectedGraph<>(LabeledEdge.class);
+        HashMap<SFNode<TypeA>, HashMap<SFNode<TypeA>, PairwiseConnectivityNode<TypeA>>> nodeMap = new HashMap<>();
         for (LabeledEdge edgeFromA : schemaGraphA.edgeSet()) {
             for (LabeledEdge edgeFromB : schemaGraphB.edgeSet()) {
                 if (edgeFromA.getType().equals(edgeFromB.getType())) {
 
-                    PairwiseConnectivityNode sourceNode;
+                    PairwiseConnectivityNode<TypeA> sourceNode;
                     if (!nodeMap.containsKey(schemaGraphA.getEdgeSource(edgeFromA))) {
                         nodeMap.put(schemaGraphA.getEdgeSource(edgeFromA), new HashMap<>());
                     }
                     if (!nodeMap.get(schemaGraphA.getEdgeSource(edgeFromA)).containsKey(schemaGraphB.getEdgeSource(edgeFromB))) {
-                        sourceNode = new PairwiseConnectivityNode(schemaGraphA.getEdgeSource(edgeFromA), schemaGraphB.getEdgeSource(edgeFromB));
+                        sourceNode = new PairwiseConnectivityNode<TypeA>(schemaGraphA.getEdgeSource(edgeFromA), schemaGraphB.getEdgeSource(edgeFromB));
                         nodeMap.get(schemaGraphA.getEdgeSource(edgeFromA)).put(schemaGraphB.getEdgeSource(edgeFromB), sourceNode);
                     } else {
                         sourceNode = nodeMap.get(schemaGraphA.getEdgeSource(edgeFromA)).get(schemaGraphB.getEdgeSource(edgeFromB));
                     }
 
-                    PairwiseConnectivityNode targetNode;
+                    PairwiseConnectivityNode<TypeA> targetNode;
                     if (!nodeMap.containsKey(schemaGraphA.getEdgeTarget(edgeFromA))) {
                         nodeMap.put(schemaGraphA.getEdgeTarget(edgeFromA), new HashMap<>());
                     }
                     if (!nodeMap.get(schemaGraphA.getEdgeTarget(edgeFromA)).containsKey(schemaGraphB.getEdgeTarget(edgeFromB))) {
-                        targetNode = new PairwiseConnectivityNode(schemaGraphA.getEdgeTarget(edgeFromA), schemaGraphB.getEdgeTarget(edgeFromB));
+                        targetNode = new PairwiseConnectivityNode<TypeA>(schemaGraphA.getEdgeTarget(edgeFromA), schemaGraphB.getEdgeTarget(edgeFromB));
                         nodeMap.get(schemaGraphA.getEdgeTarget(edgeFromA)).put(schemaGraphB.getEdgeTarget(edgeFromB), targetNode);
                     } else {
                         targetNode = nodeMap.get(schemaGraphA.getEdgeTarget(edgeFromA)).get(schemaGraphB.getEdgeTarget(edgeFromB));
@@ -318,17 +311,18 @@ public class SimilarityFloodingAlgorithm<TypeA extends SFMatchable, TypeB extend
         return pcg;
     }
 
-    SimpleDirectedGraph<IPGNode, CoeffEdge> generateInducedPropagationGraph(SimpleDirectedGraph<SFNode<TypeA>, LabeledEdge> schemaGraphA, SimpleDirectedGraph<SFNode<TypeA>, LabeledEdge> schemaGraphB,
-        SimpleDirectedGraph<PairwiseConnectivityNode, LabeledEdge> pcg) {
+    SimpleDirectedGraph<IPGNode<TypeA>, CoeffEdge> generateInducedPropagationGraph(SimpleDirectedGraph<SFNode<TypeA>, LabeledEdge> schemaGraphA,
+        SimpleDirectedGraph<SFNode<TypeA>, LabeledEdge> schemaGraphB,
+        SimpleDirectedGraph<PairwiseConnectivityNode<TypeA>, LabeledEdge> pcg) {
         HashMap<SFNode<TypeA>, HashMap<SFNode<TypeA>, Double>> simMap = generateInitialMap(schemaGraphA, schemaGraphB);
-        SimpleDirectedGraph<IPGNode, CoeffEdge> ipg = new SimpleDirectedGraph<>(CoeffEdge.class);
-        HashMap<PairwiseConnectivityNode, IPGNode> nodeMap = new HashMap<>();
+        SimpleDirectedGraph<IPGNode<TypeA>, CoeffEdge> ipg = new SimpleDirectedGraph<>(CoeffEdge.class);
+        HashMap<PairwiseConnectivityNode<TypeA>, IPGNode<TypeA>> nodeMap = new HashMap<>();
 
         for (LabeledEdge pcgEdge : pcg.edgeSet()) {
-            IPGNode nodeA = createIPGNodeFromPCGNode(pcg.getEdgeSource(pcgEdge), nodeMap, simMap);
+            IPGNode<TypeA> nodeA = createIPGNodeFromPCGNode(pcg.getEdgeSource(pcgEdge), nodeMap, simMap);
             ipg.addVertex(nodeA);
 
-            IPGNode nodeB = createIPGNodeFromPCGNode(pcg.getEdgeTarget(pcgEdge), nodeMap, simMap);
+            IPGNode<TypeA> nodeB = createIPGNodeFromPCGNode(pcg.getEdgeTarget(pcgEdge), nodeMap, simMap);
             ipg.addVertex(nodeB);
 
             CoeffEdge coeffEdgeA = new CoeffEdge(inverseProduct(pcg.getEdgeSource(pcgEdge), pcg).get(pcgEdge.getType()));
@@ -416,8 +410,9 @@ public class SimilarityFloodingAlgorithm<TypeA extends SFMatchable, TypeB extend
         return tableOidNode;
     }
 
-    private IPGNode createIPGNodeFromPCGNode(PairwiseConnectivityNode pcg, HashMap<PairwiseConnectivityNode, IPGNode> nodeMap, HashMap<SFNode<TypeA>, HashMap<SFNode<TypeA>, Double>> simMap) {
-        IPGNode ipgNode;
+    private IPGNode<TypeA> createIPGNodeFromPCGNode(PairwiseConnectivityNode<TypeA> pcg, HashMap<PairwiseConnectivityNode<TypeA>, IPGNode<TypeA>> nodeMap,
+        HashMap<SFNode<TypeA>, HashMap<SFNode<TypeA>, Double>> simMap) {
+        IPGNode<TypeA> ipgNode;
 
         if (!nodeMap.containsKey(pcg)) {
             double initSim;
@@ -426,7 +421,7 @@ public class SimilarityFloodingAlgorithm<TypeA extends SFMatchable, TypeB extend
             } else {
                 initSim = simMap.get(pcg.getA()).get(pcg.getB());
             }
-            ipgNode = new IPGNode(pcg, initSim, initSim, 0);
+            ipgNode = new IPGNode<TypeA>(pcg, initSim, initSim, 0);
             nodeMap.put(pcg, ipgNode);
         } else {
             ipgNode = nodeMap.get(pcg);
@@ -434,11 +429,11 @@ public class SimilarityFloodingAlgorithm<TypeA extends SFMatchable, TypeB extend
         return ipgNode;
     }
 
-    private HashMap<LabeledEdgeType, Double> inverseProduct(PairwiseConnectivityNode node, SimpleDirectedGraph<PairwiseConnectivityNode, LabeledEdge> pcd) {
-        HashMap<LabeledEdgeType, List<PairwiseConnectivityNode>> nodeByLabels = partitionNeighboursByLabels(node, pcd);
+    private HashMap<LabeledEdgeType, Double> inverseProduct(PairwiseConnectivityNode<TypeA> node, SimpleDirectedGraph<PairwiseConnectivityNode<TypeA>, LabeledEdge> pcd) {
+        HashMap<LabeledEdgeType, List<PairwiseConnectivityNode<TypeA>>> nodeByLabels = partitionNeighboursByLabels(node, pcd);
 
         HashMap<LabeledEdgeType, Double> result = new HashMap<>();
-        for (Entry<LabeledEdgeType, List<PairwiseConnectivityNode>> label : nodeByLabels.entrySet()) {
+        for (Entry<LabeledEdgeType, List<PairwiseConnectivityNode<TypeA>>> label : nodeByLabels.entrySet()) {
             result.put(label.getKey(), 1 / (double) label.getValue().size());
         }
 
@@ -446,8 +441,9 @@ public class SimilarityFloodingAlgorithm<TypeA extends SFMatchable, TypeB extend
     }
 
 
-    private HashMap<LabeledEdgeType, List<PairwiseConnectivityNode>> partitionNeighboursByLabels(PairwiseConnectivityNode node, SimpleDirectedGraph<PairwiseConnectivityNode, LabeledEdge> pcd) {
-        HashMap<LabeledEdgeType, List<PairwiseConnectivityNode>> neighboursByEdgeType = new HashMap<>();
+    private HashMap<LabeledEdgeType, List<PairwiseConnectivityNode<TypeA>>> partitionNeighboursByLabels(PairwiseConnectivityNode<TypeA> node,
+        SimpleDirectedGraph<PairwiseConnectivityNode<TypeA>, LabeledEdge> pcd) {
+        HashMap<LabeledEdgeType, List<PairwiseConnectivityNode<TypeA>>> neighboursByEdgeType = new HashMap<>();
 
         for (LabeledEdge outgoingEdge : pcd.outgoingEdgesOf(node)) {
             if (!neighboursByEdgeType.containsKey(outgoingEdge.getType())) {
@@ -475,18 +471,51 @@ public class SimilarityFloodingAlgorithm<TypeA extends SFMatchable, TypeB extend
             for (SFNode<TypeA> nodeFromB : schemaGraphB.vertexSet()) {
 
                 double sim;
-                if (nodeFromA.getMatchable() == null || nodeFromB.getMatchable() == null
-                    || nodeFromA.getGetIdentifier().equals("string")
-                    || nodeFromA.getGetIdentifier().equals("numeric")
-                    || nodeFromA.getGetIdentifier().equals("date")
-                    || nodeFromA.getGetIdentifier().equals("bool")
-                    || nodeFromA.getGetIdentifier().equals("link")
-                    || nodeFromA.getGetIdentifier().equals("unit")
-                    || nodeFromB.getGetIdentifier().equals("string")
-                    || nodeFromB.getGetIdentifier().equals("numeric")
-                    || nodeFromB.getGetIdentifier().equals("date")
-                    || nodeFromB.getGetIdentifier().equals("bool")
-                    || nodeFromB.getGetIdentifier().equals("unit")
+                if (nodeFromA.getGetIdentifier().equals("string") && nodeFromB.getGetIdentifier().equals("string")
+                    || nodeFromA.getGetIdentifier().equals("numeric") && nodeFromB.getGetIdentifier().equals("numeric")
+                    || nodeFromA.getGetIdentifier().equals("unit") && nodeFromB.getGetIdentifier().equals("unit")
+                    || nodeFromA.getGetIdentifier().equals("date") && nodeFromB.getGetIdentifier().equals("date")
+                    || nodeFromA.getGetIdentifier().equals("bool") && nodeFromB.getGetIdentifier().equals("bool")
+                    || nodeFromA.getGetIdentifier().equals("link") && nodeFromB.getGetIdentifier().equals("link")
+                ) {
+                    sim = 1.0;
+                } else if (
+                    nodeFromA.getMatchable() == null || nodeFromB.getMatchable() == null
+
+                        || nodeFromA.getGetIdentifier().equals("string") && nodeFromB.getGetIdentifier().equals("numeric")
+                        || nodeFromA.getGetIdentifier().equals("string") && nodeFromB.getGetIdentifier().equals("date")
+                        || nodeFromA.getGetIdentifier().equals("string") && nodeFromB.getGetIdentifier().equals("bool")
+                        || nodeFromA.getGetIdentifier().equals("string") && nodeFromA.getGetIdentifier().equals("link")
+
+                        || nodeFromA.getGetIdentifier().equals("numeric") && nodeFromA.getGetIdentifier().equals("unit")
+                        || nodeFromA.getGetIdentifier().equals("numeric") && nodeFromB.getGetIdentifier().equals("string")
+                        || nodeFromA.getGetIdentifier().equals("numeric") && nodeFromB.getGetIdentifier().equals("date")
+                        || nodeFromA.getGetIdentifier().equals("numeric") && nodeFromB.getGetIdentifier().equals("bool")
+                        || nodeFromA.getGetIdentifier().equals("numeric") && nodeFromB.getGetIdentifier().equals("link")
+
+                        || nodeFromA.getGetIdentifier().equals("unit") && nodeFromA.getGetIdentifier().equals("numeric")
+                        || nodeFromA.getGetIdentifier().equals("unit") && nodeFromB.getGetIdentifier().equals("string")
+                        || nodeFromA.getGetIdentifier().equals("unit") && nodeFromB.getGetIdentifier().equals("date")
+                        || nodeFromA.getGetIdentifier().equals("unit") && nodeFromB.getGetIdentifier().equals("bool")
+                        || nodeFromA.getGetIdentifier().equals("unit") && nodeFromB.getGetIdentifier().equals("link")
+
+                        || nodeFromA.getGetIdentifier().equals("date") && nodeFromB.getGetIdentifier().equals("numeric")
+                        || nodeFromA.getGetIdentifier().equals("date") && nodeFromB.getGetIdentifier().equals("string")
+                        || nodeFromA.getGetIdentifier().equals("date") && nodeFromB.getGetIdentifier().equals("unit")
+                        || nodeFromA.getGetIdentifier().equals("date") && nodeFromB.getGetIdentifier().equals("bool")
+                        || nodeFromA.getGetIdentifier().equals("date") && nodeFromB.getGetIdentifier().equals("link")
+
+                        || nodeFromA.getGetIdentifier().equals("bool") && nodeFromB.getGetIdentifier().equals("numeric")
+                        || nodeFromA.getGetIdentifier().equals("bool") && nodeFromB.getGetIdentifier().equals("string")
+                        || nodeFromA.getGetIdentifier().equals("bool") && nodeFromB.getGetIdentifier().equals("unit")
+                        || nodeFromA.getGetIdentifier().equals("bool") && nodeFromB.getGetIdentifier().equals("date")
+                        || nodeFromA.getGetIdentifier().equals("bool") && nodeFromB.getGetIdentifier().equals("link")
+
+                        || nodeFromA.getGetIdentifier().equals("link") && nodeFromB.getGetIdentifier().equals("string")
+                        || nodeFromA.getGetIdentifier().equals("link") && nodeFromB.getGetIdentifier().equals("numeric")
+                        || nodeFromA.getGetIdentifier().equals("link") && nodeFromB.getGetIdentifier().equals("unit")
+                        || nodeFromA.getGetIdentifier().equals("link") && nodeFromB.getGetIdentifier().equals("date")
+                        || nodeFromA.getGetIdentifier().equals("link") && nodeFromB.getGetIdentifier().equals("bool")
                 ) {
                     sim = defaultSim;
                 } else {
@@ -508,7 +537,7 @@ public class SimilarityFloodingAlgorithm<TypeA extends SFMatchable, TypeB extend
         return "&" + (oidInteger + 1);
     }
 
-    public SimpleDirectedGraph<IPGNode, CoeffEdge> getIpg() {
+    public SimpleDirectedGraph<IPGNode<TypeA>, CoeffEdge> getIpg() {
         return ipg;
     }
 

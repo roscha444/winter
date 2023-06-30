@@ -42,4 +42,13 @@ public class SFNode<TypeA> {
     public void setGetIdentifier(String getIdentifier) {
         this.getIdentifier = getIdentifier;
     }
+
+    @Override
+    public String toString() {
+        return "SFNode{" +
+            "getIdentifier='" + getIdentifier + '\'' +
+            ", type=" + type +
+            ", matchable=" + matchable +
+            '}';
+    }
 }
