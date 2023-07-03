@@ -2,6 +2,7 @@ package de.uni_mannheim.informatik.dws.winter.matching.algorithms;
 
 import static junit.framework.TestCase.assertEquals;
 
+import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.FixpointFormula;
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.ipg.CoeffEdge;
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.ipg.IPGNode;
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.pcg.LabeledEdge;
@@ -92,7 +93,7 @@ public class SimilarityFloodingAlgorithmTest {
     @Test
     public void testGraphShouldBeCreatedFromSchema() {
         // prepare
-        SimilarityFloodingAlgorithm<SFTestMatchable, SFTestMatchable> similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm<>(null, null, new SFComparatorLevenshtein());
+        SimilarityFloodingAlgorithm<SFTestMatchable, SFTestMatchable> similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm<>(null, null, new SFComparatorLevenshtein(), FixpointFormula.A);
 
         List<SFTestMatchable> tablesForSchemaA = new ArrayList<>();
         SFTestMatchable pno = new SFTestMatchable(DataType.numeric, "0", "Pno");
@@ -113,7 +114,7 @@ public class SimilarityFloodingAlgorithmTest {
     @Test
     public void testPairWiseConnectivityGraphShouldBeCreatedFromGraph() {
         // prepare
-        SimilarityFloodingAlgorithm<SFTestMatchable, SFTestMatchable> similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm<>(null, null, new SFComparatorLevenshtein());
+        SimilarityFloodingAlgorithm<SFTestMatchable, SFTestMatchable> similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm<>(null, null, new SFComparatorLevenshtein(), FixpointFormula.A);
 
         SimpleDirectedGraph<SFNode<SFTestMatchable>, LabeledEdge> modelA = new SimpleDirectedGraph<>(LabeledEdge.class);
         SFNode<SFTestMatchable> a = new SFNode<>("a", SFNodeType.IDENTIFIER);
@@ -153,7 +154,7 @@ public class SimilarityFloodingAlgorithmTest {
     @Test
     public void testInducedPropagationGraphShouldBeCreatedFromPCG() {
         // prepare
-        SimilarityFloodingAlgorithm<SFTestMatchable, SFTestMatchable> similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm<>(null, null, null);
+        SimilarityFloodingAlgorithm<SFTestMatchable, SFTestMatchable> similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm<>(null, null, null, FixpointFormula.A);
 
         SimpleDirectedGraph<SFNode<SFTestMatchable>, LabeledEdge> modelA = new SimpleDirectedGraph<>(LabeledEdge.class);
         SFNode<SFTestMatchable> a = new SFNode<>("a", SFNodeType.IDENTIFIER);
@@ -194,7 +195,7 @@ public class SimilarityFloodingAlgorithmTest {
     @Test
     public void testShouldCalculateFixpointValuesFromIPG_1() {
         // prepare
-        SimilarityFloodingAlgorithm<SFTestMatchable, SFTestMatchable> similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm<>(null, null, new SFComparatorLevenshtein());
+        SimilarityFloodingAlgorithm<SFTestMatchable, SFTestMatchable> similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm<>(null, null, new SFComparatorLevenshtein(), FixpointFormula.A);
 
         SimpleDirectedGraph<SFNode<SFTestMatchable>, LabeledEdge> modelA = new SimpleDirectedGraph<>(LabeledEdge.class);
         SFNode<SFTestMatchable> a = new SFNode<>("a", SFNodeType.IDENTIFIER);
@@ -260,7 +261,7 @@ public class SimilarityFloodingAlgorithmTest {
         columnsSchemaTwo.add(birthdate);
 
         SimilarityFloodingAlgorithm<SFTestMatchable, SFTestMatchable> similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm<>("Personnel", columnsSchemaOne, "Employee", columnsSchemaTwo,
-            new SFComparatorLevenshtein());
+            new SFComparatorLevenshtein(), FixpointFormula.Basic);
 
         // run
         similarityFloodingAlgorithm.run();
@@ -299,7 +300,7 @@ public class SimilarityFloodingAlgorithmTest {
         columnsSchemaTwo.add(birthdate);
 
         SimilarityFloodingAlgorithm<SFTestMatchable, SFTestMatchable> similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm<>("Personnel", columnsSchemaOne, "Employee", columnsSchemaTwo,
-            new SFComparatorLevenshtein());
+            new SFComparatorLevenshtein(), FixpointFormula.A);
         similarityFloodingAlgorithm.setRemoveOid(true);
 
         // run
@@ -341,7 +342,7 @@ public class SimilarityFloodingAlgorithmTest {
         columnsSchemaTwo.add(birthdate);
 
         SimilarityFloodingAlgorithm<SFTestMatchable, SFTestMatchable> similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm<>("Personnel", columnsSchemaOne, "Employee", columnsSchemaTwo,
-            new SFComparatorLevenshtein());
+            new SFComparatorLevenshtein(), FixpointFormula.A);
 
         // run
         similarityFloodingAlgorithm.run();
@@ -356,7 +357,7 @@ public class SimilarityFloodingAlgorithmTest {
 
         assertEquals(birthdate.getValue(), resultList.get(born.getValue()));
         assertEquals(empNo.getValue(), resultList.get(pno.getValue()));
-        assertEquals(empName.getValue(), resultList.get(dept.getValue()));
+        assertEquals(deptNo.getValue(), resultList.get(dept.getValue()));
         assertEquals(salary.getValue(), resultList.get(pname.getValue()));
     }
 
@@ -386,7 +387,7 @@ public class SimilarityFloodingAlgorithmTest {
         columnsSchemaTwo.add(birthdate);
 
         SimilarityFloodingAlgorithm<SFTestMatchable, SFTestMatchable> similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm<>("Personnel", columnsSchemaOne, "Employee", columnsSchemaTwo,
-            new SFComparatorLevenshtein());
+            new SFComparatorLevenshtein(), FixpointFormula.A);
         similarityFloodingAlgorithm.setRemoveOid(true);
 
         // run
@@ -426,7 +427,7 @@ public class SimilarityFloodingAlgorithmTest {
         columnsSchemaTwo.add(state);
 
         SimilarityFloodingAlgorithm<SFTestMatchable, SFTestMatchable> similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm<>("Personnel", columnsSchemaOne, "Employee", columnsSchemaTwo,
-            new SFComparatorLevenshtein());
+            new SFComparatorLevenshtein(), FixpointFormula.A);
         similarityFloodingAlgorithm.setRemoveOid(true);
 
         // run
@@ -465,7 +466,7 @@ public class SimilarityFloodingAlgorithmTest {
         columnsSchemaTwo.add(state);
 
         SimilarityFloodingAlgorithm<SFTestMatchable, SFTestMatchable> similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm<>("Personnel", columnsSchemaOne, "Employee", columnsSchemaTwo,
-            new SFComparatorLevenshtein());
+            new SFComparatorLevenshtein(), FixpointFormula.A);
         similarityFloodingAlgorithm.setRemoveOid(false);
 
         // run
@@ -508,7 +509,7 @@ public class SimilarityFloodingAlgorithmTest {
         columnsSchemaTwo.add(area);
 
         SimilarityFloodingAlgorithm<SFTestMatchable, SFTestMatchable> similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm<>("Personnel", columnsSchemaOne, "Employee", columnsSchemaTwo,
-            new SFComparatorLevenshtein());
+            new SFComparatorLevenshtein(), FixpointFormula.A);
         similarityFloodingAlgorithm.setRemoveOid(false);
 
         // run

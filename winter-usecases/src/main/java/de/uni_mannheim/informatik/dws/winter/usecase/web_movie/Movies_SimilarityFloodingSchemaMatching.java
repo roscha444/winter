@@ -12,6 +12,7 @@
 package de.uni_mannheim.informatik.dws.winter.usecase.web_movie;
 
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.SimilarityFloodingAlgorithm;
+import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.FixpointFormula;
 import de.uni_mannheim.informatik.dws.winter.matching.rules.comparators.Comparator;
 import de.uni_mannheim.informatik.dws.winter.matching.rules.comparators.ComparatorLogger;
 import de.uni_mannheim.informatik.dws.winter.model.Correspondence;
@@ -50,8 +51,10 @@ public class Movies_SimilarityFloodingSchemaMatching {
         // Initialize Matching Engine
 
         SimilarityFloodingAlgorithm<SFTestMatchable, SFTestMatchable> sf = new SimilarityFloodingAlgorithm<>(getSimilarityFloodingSchema(data2), getSimilarityFloodingSchema(data1),
-            new SFComparatorLevenshtein());
+            new SFComparatorLevenshtein(), FixpointFormula.A);
         sf.setRemoveOid(true);
+        sf.setDefaultSim(Double.MIN_VALUE);
+        sf.setMinSim(0.05);
         sf.run();
         Processable<Correspondence<SFTestMatchable, SFTestMatchable>> correspondences = sf.getResult();
 

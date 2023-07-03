@@ -1,5 +1,6 @@
 package de.uni_mannheim.informatik.dws.winter.matching.algorithms;
 
+import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.FixpointFormula;
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.ipg.CoeffEdge;
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.ipg.IPGNode;
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.pcg.LabeledEdge;
@@ -49,19 +50,23 @@ public class SimilarityFloodingAlgorithm<TypeA extends SFMatchable, TypeB extend
     private double defaultSim = 0.01;
     private double minSim = 0.00001;
     private boolean removeOid = false;
+    private boolean alternativeInc = false;
+    private final FixpointFormula fixpointFormula;
 
-    public SimilarityFloodingAlgorithm(String schemaAName, List<TypeA> schemaA, String schemaBName, List<TypeA> schemaB, Comparator<TypeA, TypeA> labelComparator) {
+    public SimilarityFloodingAlgorithm(String schemaAName, List<TypeA> schemaA, String schemaBName, List<TypeA> schemaB, Comparator<TypeA, TypeA> labelComparator, FixpointFormula fixpointFormula) {
         this.schemaAName = schemaAName;
         this.schemaA = schemaA;
         this.schemaBName = schemaBName;
         this.schemaB = schemaB;
         this.labelComparator = labelComparator;
+        this.fixpointFormula = fixpointFormula;
     }
 
-    public SimilarityFloodingAlgorithm(List<TypeA> schemaA, List<TypeA> schemaB, Comparator<TypeA, TypeA> labelComparator) {
+    public SimilarityFloodingAlgorithm(List<TypeA> schemaA, List<TypeA> schemaB, Comparator<TypeA, TypeA> labelComparator, FixpointFormula fixpointFormula) {
         this.schemaA = schemaA;
         this.schemaB = schemaB;
         this.labelComparator = labelComparator;
+        this.fixpointFormula = fixpointFormula;
     }
 
     public void run() {
@@ -81,19 +86,19 @@ public class SimilarityFloodingAlgorithm<TypeA extends SFMatchable, TypeB extend
         List<Pair<Pair<SFNode<TypeA>, SFNode<TypeA>>, Double>> engagements = filterStableMarriage(ipg);
 
         result = new ProcessableCollection<>();
-        logger.info("Final result after filter application:");
+        logger.trace("Final result after filter application:");
         for (Pair<Pair<SFNode<TypeA>, SFNode<TypeA>>, Double> entry : engagements) {
             Pair<SFNode<TypeA>, SFNode<TypeA>> pair = entry.getFirst();
             if (pair.getFirst() == null) {
-                logger.info("no_match_found");
+                logger.trace("no_match_found");
             } else {
-                logger.info(pair.getFirst().toString());
+                logger.trace(pair.getFirst().toString());
             }
-            logger.info("< - " + entry.getSecond() + " - >");
+            logger.trace("< - " + entry.getSecond() + " - >");
             if (pair.getSecond() == null) {
-                logger.info("no_match_found" + "\n");
+                logger.trace("no_match_found" + "\n");
             } else {
-                logger.info(pair.getSecond().toString() + "\n");
+                logger.trace(pair.getSecond().toString() + "\n");
             }
 
             // CHECK
@@ -236,7 +241,7 @@ public class SimilarityFloodingAlgorithm<TypeA extends SFMatchable, TypeB extend
             boolean cont = similarityFloodingStep(ipg);
 
             if (!cont) {
-                logger.info("Terminated: vector has length less than epsilon");
+                logger.trace("Terminated: vector has length less than epsilon");
                 break;
             }
         }
@@ -247,7 +252,19 @@ public class SimilarityFloodingAlgorithm<TypeA extends SFMatchable, TypeB extend
         double delta = 0;
 
         for (IPGNode<TypeA> node : ipg.vertexSet()) {
-            double newSim = fixpointIncremental(node, ipg);
+
+            double newSim;
+
+            if (fixpointFormula.equals(FixpointFormula.A)) {
+                newSim = fixpointA(node, ipg);
+            } else if (fixpointFormula.equals(FixpointFormula.B)) {
+                newSim = fixpointB(node, ipg);
+            } else if (fixpointFormula.equals(FixpointFormula.C)) {
+                newSim = fixpointC(node, ipg);
+            } else {
+                newSim = fixpointBasic(node, ipg);
+            }
+
             maxSim = Math.max(maxSim, newSim);
             node.setNextSim(newSim);
         }
@@ -261,7 +278,7 @@ public class SimilarityFloodingAlgorithm<TypeA extends SFMatchable, TypeB extend
         return Math.sqrt(delta) >= epsilon;
     }
 
-    private double fixpointIncremental(IPGNode<TypeA> node, SimpleDirectedGraph<IPGNode<TypeA>, CoeffEdge> ipg) {
+    private double fixpointBasic(IPGNode<TypeA> node, SimpleDirectedGraph<IPGNode<TypeA>, CoeffEdge> ipg) {
         double increment = 0;
 
         for (CoeffEdge coeffEdge : ipg.incomingEdgesOf(node)) {
@@ -269,6 +286,36 @@ public class SimilarityFloodingAlgorithm<TypeA extends SFMatchable, TypeB extend
         }
 
         return node.getCurrSim() + increment;
+    }
+
+    private double fixpointA(IPGNode<TypeA> node, SimpleDirectedGraph<IPGNode<TypeA>, CoeffEdge> ipg) {
+        double increment = 0;
+
+        for (CoeffEdge coeffEdge : ipg.incomingEdgesOf(node)) {
+            increment += ipg.getEdgeSource(coeffEdge).getCurrSim() * coeffEdge.getCoeff();
+        }
+
+        return node.getInitSim() + increment;
+    }
+
+    private double fixpointB(IPGNode<TypeA> node, SimpleDirectedGraph<IPGNode<TypeA>, CoeffEdge> ipg) {
+        double increment = 0;
+
+        for (CoeffEdge coeffEdge : ipg.incomingEdgesOf(node)) {
+            increment += (ipg.getEdgeSource(coeffEdge).getCurrSim() + ipg.getEdgeSource(coeffEdge).getInitSim()) * coeffEdge.getCoeff();
+        }
+
+        return increment;
+    }
+
+    private double fixpointC(IPGNode<TypeA> node, SimpleDirectedGraph<IPGNode<TypeA>, CoeffEdge> ipg) {
+        double increment = 0;
+
+        for (CoeffEdge coeffEdge : ipg.incomingEdgesOf(node)) {
+            increment += (ipg.getEdgeSource(coeffEdge).getCurrSim() + ipg.getEdgeSource(coeffEdge).getInitSim()) * coeffEdge.getCoeff();
+        }
+
+        return node.getInitSim() + node.getCurrSim() + increment;
     }
 
     SimpleDirectedGraph<PairwiseConnectivityNode<TypeA>, LabeledEdge> generatePairwiseConnectivityGraph(SimpleDirectedGraph<SFNode<TypeA>, LabeledEdge> schemaGraphA,
@@ -358,6 +405,9 @@ public class SimilarityFloodingAlgorithm<TypeA extends SFMatchable, TypeB extend
         dateTypeMap.put(DataType.link, new Pair<>(new SFNode<TypeA>("link", SFNodeType.LITERAL), null));
         dateTypeMap.put(DataType.bool, new Pair<>(new SFNode<TypeA>("bool", SFNodeType.LITERAL), null));
         dateTypeMap.put(DataType.unit, new Pair<>(new SFNode<TypeA>("unit", SFNodeType.LITERAL), null));
+        dateTypeMap.put(DataType.coordinate, new Pair<>(new SFNode<TypeA>("coordinate", SFNodeType.LITERAL), null));
+        dateTypeMap.put(DataType.list, new Pair<>(new SFNode<TypeA>("list", SFNodeType.LITERAL), null));
+        dateTypeMap.put(DataType.unknown, new Pair<>(new SFNode<TypeA>("unknown", SFNodeType.LITERAL), null));
 
         for (TypeA column : schema) {
             SFNode<TypeA> columnName = new SFNode<TypeA>(column.getIdentifier(), SFNodeType.LITERAL, column);
@@ -477,8 +527,11 @@ public class SimilarityFloodingAlgorithm<TypeA extends SFMatchable, TypeB extend
                     || nodeFromA.getGetIdentifier().equals("date") && nodeFromB.getGetIdentifier().equals("date")
                     || nodeFromA.getGetIdentifier().equals("bool") && nodeFromB.getGetIdentifier().equals("bool")
                     || nodeFromA.getGetIdentifier().equals("link") && nodeFromB.getGetIdentifier().equals("link")
+                    || nodeFromA.getGetIdentifier().equals("coordinate") && nodeFromB.getGetIdentifier().equals("coordinate")
+                    || nodeFromA.getGetIdentifier().equals("list") && nodeFromB.getGetIdentifier().equals("list")
+                    || nodeFromA.getGetIdentifier().equals("unknown") && nodeFromB.getGetIdentifier().equals("unknown")
                 ) {
-                    sim = 1.0;
+                    sim = 0.5;
                 } else if (
                     nodeFromA.getMatchable() == null || nodeFromB.getMatchable() == null
 
@@ -486,36 +539,73 @@ public class SimilarityFloodingAlgorithm<TypeA extends SFMatchable, TypeB extend
                         || nodeFromA.getGetIdentifier().equals("string") && nodeFromB.getGetIdentifier().equals("date")
                         || nodeFromA.getGetIdentifier().equals("string") && nodeFromB.getGetIdentifier().equals("bool")
                         || nodeFromA.getGetIdentifier().equals("string") && nodeFromA.getGetIdentifier().equals("link")
+                        || nodeFromA.getGetIdentifier().equals("string") && nodeFromA.getGetIdentifier().equals("unit")
+                        || nodeFromA.getGetIdentifier().equals("string") && nodeFromA.getGetIdentifier().equals("unknown")
+                        || nodeFromA.getGetIdentifier().equals("string") && nodeFromA.getGetIdentifier().equals("coordinate")
+                        || nodeFromA.getGetIdentifier().equals("string") && nodeFromA.getGetIdentifier().equals("list")
 
                         || nodeFromA.getGetIdentifier().equals("numeric") && nodeFromA.getGetIdentifier().equals("unit")
                         || nodeFromA.getGetIdentifier().equals("numeric") && nodeFromB.getGetIdentifier().equals("string")
                         || nodeFromA.getGetIdentifier().equals("numeric") && nodeFromB.getGetIdentifier().equals("date")
                         || nodeFromA.getGetIdentifier().equals("numeric") && nodeFromB.getGetIdentifier().equals("bool")
                         || nodeFromA.getGetIdentifier().equals("numeric") && nodeFromB.getGetIdentifier().equals("link")
+                        || nodeFromA.getGetIdentifier().equals("numeric") && nodeFromA.getGetIdentifier().equals("unknown")
+                        || nodeFromA.getGetIdentifier().equals("numeric") && nodeFromA.getGetIdentifier().equals("coordinate")
+                        || nodeFromA.getGetIdentifier().equals("numeric") && nodeFromA.getGetIdentifier().equals("list")
 
                         || nodeFromA.getGetIdentifier().equals("unit") && nodeFromA.getGetIdentifier().equals("numeric")
                         || nodeFromA.getGetIdentifier().equals("unit") && nodeFromB.getGetIdentifier().equals("string")
                         || nodeFromA.getGetIdentifier().equals("unit") && nodeFromB.getGetIdentifier().equals("date")
                         || nodeFromA.getGetIdentifier().equals("unit") && nodeFromB.getGetIdentifier().equals("bool")
                         || nodeFromA.getGetIdentifier().equals("unit") && nodeFromB.getGetIdentifier().equals("link")
+                        || nodeFromA.getGetIdentifier().equals("unit") && nodeFromA.getGetIdentifier().equals("unknown")
+                        || nodeFromA.getGetIdentifier().equals("unit") && nodeFromA.getGetIdentifier().equals("coordinate")
+                        || nodeFromA.getGetIdentifier().equals("unit") && nodeFromA.getGetIdentifier().equals("list")
 
                         || nodeFromA.getGetIdentifier().equals("date") && nodeFromB.getGetIdentifier().equals("numeric")
                         || nodeFromA.getGetIdentifier().equals("date") && nodeFromB.getGetIdentifier().equals("string")
                         || nodeFromA.getGetIdentifier().equals("date") && nodeFromB.getGetIdentifier().equals("unit")
                         || nodeFromA.getGetIdentifier().equals("date") && nodeFromB.getGetIdentifier().equals("bool")
                         || nodeFromA.getGetIdentifier().equals("date") && nodeFromB.getGetIdentifier().equals("link")
+                        || nodeFromA.getGetIdentifier().equals("date") && nodeFromA.getGetIdentifier().equals("unknown")
+                        || nodeFromA.getGetIdentifier().equals("date") && nodeFromA.getGetIdentifier().equals("coordinate")
+                        || nodeFromA.getGetIdentifier().equals("date") && nodeFromA.getGetIdentifier().equals("list")
 
                         || nodeFromA.getGetIdentifier().equals("bool") && nodeFromB.getGetIdentifier().equals("numeric")
                         || nodeFromA.getGetIdentifier().equals("bool") && nodeFromB.getGetIdentifier().equals("string")
                         || nodeFromA.getGetIdentifier().equals("bool") && nodeFromB.getGetIdentifier().equals("unit")
                         || nodeFromA.getGetIdentifier().equals("bool") && nodeFromB.getGetIdentifier().equals("date")
                         || nodeFromA.getGetIdentifier().equals("bool") && nodeFromB.getGetIdentifier().equals("link")
+                        || nodeFromA.getGetIdentifier().equals("bool") && nodeFromA.getGetIdentifier().equals("unknown")
+                        || nodeFromA.getGetIdentifier().equals("bool") && nodeFromA.getGetIdentifier().equals("coordinate")
+                        || nodeFromA.getGetIdentifier().equals("bool") && nodeFromA.getGetIdentifier().equals("list")
 
-                        || nodeFromA.getGetIdentifier().equals("link") && nodeFromB.getGetIdentifier().equals("string")
-                        || nodeFromA.getGetIdentifier().equals("link") && nodeFromB.getGetIdentifier().equals("numeric")
-                        || nodeFromA.getGetIdentifier().equals("link") && nodeFromB.getGetIdentifier().equals("unit")
-                        || nodeFromA.getGetIdentifier().equals("link") && nodeFromB.getGetIdentifier().equals("date")
-                        || nodeFromA.getGetIdentifier().equals("link") && nodeFromB.getGetIdentifier().equals("bool")
+                        || nodeFromA.getGetIdentifier().equals("unknown") && nodeFromB.getGetIdentifier().equals("string")
+                        || nodeFromA.getGetIdentifier().equals("unknown") && nodeFromB.getGetIdentifier().equals("numeric")
+                        || nodeFromA.getGetIdentifier().equals("unknown") && nodeFromB.getGetIdentifier().equals("unit")
+                        || nodeFromA.getGetIdentifier().equals("unknown") && nodeFromB.getGetIdentifier().equals("date")
+                        || nodeFromA.getGetIdentifier().equals("unknown") && nodeFromB.getGetIdentifier().equals("bool")
+                        || nodeFromA.getGetIdentifier().equals("unknown") && nodeFromA.getGetIdentifier().equals("link")
+                        || nodeFromA.getGetIdentifier().equals("unknown") && nodeFromA.getGetIdentifier().equals("coordinate")
+                        || nodeFromA.getGetIdentifier().equals("unknown") && nodeFromA.getGetIdentifier().equals("list")
+
+                        || nodeFromA.getGetIdentifier().equals("coordinate") && nodeFromB.getGetIdentifier().equals("string")
+                        || nodeFromA.getGetIdentifier().equals("coordinate") && nodeFromB.getGetIdentifier().equals("numeric")
+                        || nodeFromA.getGetIdentifier().equals("coordinate") && nodeFromB.getGetIdentifier().equals("unit")
+                        || nodeFromA.getGetIdentifier().equals("coordinate") && nodeFromB.getGetIdentifier().equals("date")
+                        || nodeFromA.getGetIdentifier().equals("coordinate") && nodeFromB.getGetIdentifier().equals("bool")
+                        || nodeFromA.getGetIdentifier().equals("coordinate") && nodeFromA.getGetIdentifier().equals("unknown")
+                        || nodeFromA.getGetIdentifier().equals("coordinate") && nodeFromA.getGetIdentifier().equals("link")
+                        || nodeFromA.getGetIdentifier().equals("coordinate") && nodeFromA.getGetIdentifier().equals("list")
+
+                        || nodeFromA.getGetIdentifier().equals("list") && nodeFromB.getGetIdentifier().equals("string")
+                        || nodeFromA.getGetIdentifier().equals("list") && nodeFromB.getGetIdentifier().equals("numeric")
+                        || nodeFromA.getGetIdentifier().equals("list") && nodeFromB.getGetIdentifier().equals("unit")
+                        || nodeFromA.getGetIdentifier().equals("list") && nodeFromB.getGetIdentifier().equals("date")
+                        || nodeFromA.getGetIdentifier().equals("list") && nodeFromB.getGetIdentifier().equals("bool")
+                        || nodeFromA.getGetIdentifier().equals("list") && nodeFromA.getGetIdentifier().equals("unknown")
+                        || nodeFromA.getGetIdentifier().equals("list") && nodeFromA.getGetIdentifier().equals("coordinate")
+                        || nodeFromA.getGetIdentifier().equals("list") && nodeFromA.getGetIdentifier().equals("link")
                 ) {
                     sim = defaultSim;
                 } else {
