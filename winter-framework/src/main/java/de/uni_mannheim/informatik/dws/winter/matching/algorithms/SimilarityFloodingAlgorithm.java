@@ -2,6 +2,9 @@ package de.uni_mannheim.informatik.dws.winter.matching.algorithms;
 
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.Filter;
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.FixpointFormula;
+import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.filter.HungarianAlgorithm;
+import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.filter.StableMarriage;
+import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.filter.TopOneK;
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.ipg.CoeffEdge;
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.ipg.IPGNode;
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.pcg.LabeledEdge;
@@ -87,11 +90,11 @@ public class SimilarityFloodingAlgorithm<TypeA extends SFMatchable, TypeB extend
         List<Pair<Pair<SFNode<TypeA>, SFNode<TypeA>>, Double>> engagements = null;
 
         if (filter.equals(Filter.HungarianAlgorithm)) {
-            engagements = hungarianAlgorithm(ipg);
+            engagements = new HungarianAlgorithm<TypeA>(minSim, removeOid).run(ipg);
         } else if (filter.equals(Filter.TopOneK)) {
-            engagements = topOneK(ipg);
+            engagements = new TopOneK<TypeA>(minSim, removeOid).run(ipg);
         } else {
-            engagements = filterStableMarriage(ipg);
+            engagements = new StableMarriage<TypeA>(minSim, removeOid).run(ipg);
         }
 
         result = new ProcessableCollection<>();
@@ -149,132 +152,6 @@ public class SimilarityFloodingAlgorithm<TypeA extends SFMatchable, TypeB extend
         }
 
         return graph;
-    }
-
-    private List<Pair<Pair<SFNode<TypeA>, SFNode<TypeA>>, Double>> topOneK(SimpleDirectedGraph<IPGNode<TypeA>, CoeffEdge> ipg) {
-        HashMap<SFNode<TypeA>, HashMap<SFNode<TypeA>, Double>> schema = clearSfCompressed(ipg);
-        HashMap<SFNode<TypeA>, List<Pair<Double, SFNode<TypeA>>>> schemaAsList = new HashMap<>();
-
-        for (Entry<SFNode<TypeA>, HashMap<SFNode<TypeA>, Double>> entry : schema.entrySet()) {
-            List<Pair<Double, SFNode<TypeA>>> tmp = new ArrayList<>();
-            for (Entry<SFNode<TypeA>, Double> entryValue : entry.getValue().entrySet()) {
-                tmp.add(new Pair<>(entryValue.getValue(), entryValue.getKey()));
-            }
-            schemaAsList.put(entry.getKey(), tmp);
-        }
-
-        for (List<Pair<Double, SFNode<TypeA>>> l : schemaAsList.values()) {
-            l.sort(java.util.Comparator.<Pair<Double, SFNode<TypeA>>>comparingDouble(Pair::getFirst).reversed());
-        }
-
-        List<Pair<Pair<SFNode<TypeA>, SFNode<TypeA>>, Double>> result = new ArrayList<>();
-
-        for (Entry<SFNode<TypeA>, List<Pair<Double, SFNode<TypeA>>>> entry : schemaAsList.entrySet()) {
-            if (entry.getValue() == null || entry.getValue().size() == 0) {
-                continue;
-            }
-            result.add(new Pair<>(new Pair<>(entry.getKey(), entry.getValue().get(0).getSecond()), entry.getValue().get(0).getFirst()));
-        }
-
-        return result;
-    }
-
-    private List<Pair<Pair<SFNode<TypeA>, SFNode<TypeA>>, Double>> hungarianAlgorithm(SimpleDirectedGraph<IPGNode<TypeA>, CoeffEdge> ipg) {
-        throw new RuntimeException();
-    }
-
-    private List<Pair<Pair<SFNode<TypeA>, SFNode<TypeA>>, Double>> filterStableMarriage(SimpleDirectedGraph<IPGNode<TypeA>, CoeffEdge> ipg) {
-        List<Pair<Pair<SFNode<TypeA>, SFNode<TypeA>>, Double>> engagements = new ArrayList<>();
-
-        HashMap<SFNode<TypeA>, Pair<Pair<Double, SFNode<TypeA>>, List<Pair<Double, SFNode<TypeA>>>>> schema1Engagements = new HashMap<>();
-        HashMap<SFNode<TypeA>, Pair<Double, SFNode<TypeA>>> schema2Engagements = new HashMap<>();
-        initEngagementsSchemas(ipg, schema1Engagements, schema2Engagements);
-
-        boolean change = true;
-        while (change) {
-            change = false;
-
-            for (Entry<SFNode<TypeA>, Pair<Pair<Double, SFNode<TypeA>>, List<Pair<Double, SFNode<TypeA>>>>> entry : schema1Engagements.entrySet()) {
-                if (entry.getValue().getFirst() == null && entry.getValue().getSecond().size() > 0) {
-                    List<Pair<Double, SFNode<TypeA>>> possibleMarriages = entry.getValue().getSecond();
-                    Pair<Double, SFNode<TypeA>> proposal = possibleMarriages.remove(0);
-
-                    if (schema2Engagements.get(proposal.getSecond()) == null) {
-                        schema2Engagements.put(proposal.getSecond(), new Pair<>(proposal.getFirst(), entry.getKey()));
-                        entry.setValue(new Pair<>(proposal, entry.getValue().getSecond()));
-                    } else {
-                        if (schema2Engagements.get(proposal.getSecond()).getFirst() < proposal.getFirst()) {
-                            Pair<Pair<Double, SFNode<TypeA>>, List<Pair<Double, SFNode<TypeA>>>> oldPair = schema1Engagements.get(schema2Engagements.get(proposal.getSecond()).getSecond());
-                            schema1Engagements.put(schema2Engagements.get(proposal.getSecond()).getSecond(), new Pair<>(null, oldPair.getSecond()));
-                            schema2Engagements.put(proposal.getSecond(), new Pair<>(proposal.getFirst(), entry.getKey()));
-                            entry.setValue(new Pair<>(proposal, entry.getValue().getSecond()));
-                        }
-                    }
-                    change = true;
-                }
-            }
-        }
-
-        for (Entry<SFNode<TypeA>, Pair<Pair<Double, SFNode<TypeA>>, List<Pair<Double, SFNode<TypeA>>>>> entry : schema1Engagements.entrySet()) {
-            SFNode<TypeA> node = entry.getKey();
-            Pair<Double, SFNode<TypeA>> bestMatch = entry.getValue().getFirst();
-            double bestMatchSim = 0.0;
-            SFNode<TypeA> bestMatchNode = null;
-            if (bestMatch != null) {
-                bestMatchSim = bestMatch.getFirst();
-                bestMatchNode = bestMatch.getSecond();
-            }
-            engagements.add(new Pair<>(new Pair<>(node, bestMatchNode), bestMatchSim));
-        }
-
-        for (Entry<SFNode<TypeA>, Pair<Double, SFNode<TypeA>>> entry : schema2Engagements.entrySet()) {
-            if (entry.getValue() == null) {
-                engagements.add(new Pair<>(new Pair<>(null, entry.getKey()), 0.0));
-            }
-        }
-
-        return engagements;
-    }
-
-    private void initEngagementsSchemas(SimpleDirectedGraph<IPGNode<TypeA>, CoeffEdge> ipg,
-        HashMap<SFNode<TypeA>, Pair<Pair<Double, SFNode<TypeA>>, List<Pair<Double, SFNode<TypeA>>>>> schema1Engagements,
-        HashMap<SFNode<TypeA>, Pair<Double, SFNode<TypeA>>> schema2Engagements) {
-        HashMap<SFNode<TypeA>, HashMap<SFNode<TypeA>, Double>> schema = clearSfCompressed(ipg);
-
-        for (Entry<SFNode<TypeA>, HashMap<SFNode<TypeA>, Double>> nodeAEntry : schema.entrySet()) {
-            SFNode<TypeA> nodeA = nodeAEntry.getKey();
-
-            for (Entry<SFNode<TypeA>, Double> nodeBEntry : nodeAEntry.getValue().entrySet()) {
-                SFNode<TypeA> nodeB = nodeBEntry.getKey();
-
-                if (!schema1Engagements.containsKey(nodeA)) {
-                    schema1Engagements.put(nodeA, new Pair<>(null, new ArrayList<>()));
-                }
-                schema1Engagements.get(nodeA).getSecond().add(new Pair<>(schema.get(nodeA).get(nodeB), nodeB));
-                if (!schema2Engagements.containsKey(nodeB)) {
-                    schema2Engagements.put(nodeB, null);
-                }
-            }
-        }
-
-        for (Pair<Pair<Double, SFNode<TypeA>>, List<Pair<Double, SFNode<TypeA>>>> l : schema1Engagements.values()) {
-            l.getSecond().sort(java.util.Comparator.<Pair<Double, SFNode<TypeA>>>comparingDouble(Pair::getFirst).reversed());
-        }
-    }
-
-    private HashMap<SFNode<TypeA>, HashMap<SFNode<TypeA>, Double>> clearSfCompressed(SimpleDirectedGraph<IPGNode<TypeA>, CoeffEdge> ipg) {
-        HashMap<SFNode<TypeA>, HashMap<SFNode<TypeA>, Double>> nodeSimMap = new HashMap<>();
-        for (IPGNode<TypeA> node : ipg.vertexSet()) {
-            SFNode<TypeA> nodeA = node.getPairwiseConnectivityNode().getA();
-            SFNode<TypeA> nodeB = node.getPairwiseConnectivityNode().getB();
-            if (node.getCurrSim() > minSim && (removeOid || nodeA.getType().equals(SFNodeType.LITERAL) && nodeB.getType().equals(SFNodeType.LITERAL))) {
-                if (!nodeSimMap.containsKey(nodeA)) {
-                    nodeSimMap.put(nodeA, new HashMap<>());
-                }
-                nodeSimMap.get(nodeA).put(nodeB, node.getCurrSim());
-            }
-        }
-        return nodeSimMap;
     }
 
     void similarityFlooding(SimpleDirectedGraph<IPGNode<TypeA>, CoeffEdge> ipg, int maxSteps) {
@@ -530,7 +407,6 @@ public class SimilarityFloodingAlgorithm<TypeA extends SFMatchable, TypeB extend
 
         return result;
     }
-
 
     private HashMap<LabeledEdgeType, List<PairwiseConnectivityNode<TypeA>>> partitionNeighboursByLabels(PairwiseConnectivityNode<TypeA> node,
         SimpleDirectedGraph<PairwiseConnectivityNode<TypeA>, LabeledEdge> pcd) {
