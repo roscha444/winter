@@ -1,5 +1,6 @@
 package de.uni_mannheim.informatik.dws.winter.matching.algorithms;
 
+import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.Filter;
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.FixpointFormula;
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.ipg.CoeffEdge;
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.ipg.IPGNode;
@@ -50,8 +51,8 @@ public class SimilarityFloodingAlgorithm<TypeA extends SFMatchable, TypeB extend
     private double defaultSim = 0.01;
     private double minSim = 0.00001;
     private boolean removeOid = false;
-    private boolean alternativeInc = false;
     private final FixpointFormula fixpointFormula;
+    private Filter filter = Filter.StableMarriage;
 
     public SimilarityFloodingAlgorithm(String schemaAName, List<TypeA> schemaA, String schemaBName, List<TypeA> schemaB, Comparator<TypeA, TypeA> labelComparator, FixpointFormula fixpointFormula) {
         this.schemaAName = schemaAName;
@@ -83,7 +84,15 @@ public class SimilarityFloodingAlgorithm<TypeA extends SFMatchable, TypeB extend
 
         similarityFlooding(ipg, maxSteps);
 
-        List<Pair<Pair<SFNode<TypeA>, SFNode<TypeA>>, Double>> engagements = filterStableMarriage(ipg);
+        List<Pair<Pair<SFNode<TypeA>, SFNode<TypeA>>, Double>> engagements = null;
+
+        if (filter.equals(Filter.HungarianAlgorithm)) {
+            engagements = hungarianAlgorithm(ipg);
+        } else if (filter.equals(Filter.TopOneK)) {
+            engagements = topOneK(ipg);
+        } else {
+            engagements = filterStableMarriage(ipg);
+        }
 
         result = new ProcessableCollection<>();
         logger.trace("Final result after filter application:");
@@ -140,6 +149,38 @@ public class SimilarityFloodingAlgorithm<TypeA extends SFMatchable, TypeB extend
         }
 
         return graph;
+    }
+
+    private List<Pair<Pair<SFNode<TypeA>, SFNode<TypeA>>, Double>> topOneK(SimpleDirectedGraph<IPGNode<TypeA>, CoeffEdge> ipg) {
+        HashMap<SFNode<TypeA>, HashMap<SFNode<TypeA>, Double>> schema = clearSfCompressed(ipg);
+        HashMap<SFNode<TypeA>, List<Pair<Double, SFNode<TypeA>>>> schemaAsList = new HashMap<>();
+
+        for (Entry<SFNode<TypeA>, HashMap<SFNode<TypeA>, Double>> entry : schema.entrySet()) {
+            List<Pair<Double, SFNode<TypeA>>> tmp = new ArrayList<>();
+            for (Entry<SFNode<TypeA>, Double> entryValue : entry.getValue().entrySet()) {
+                tmp.add(new Pair<>(entryValue.getValue(), entryValue.getKey()));
+            }
+            schemaAsList.put(entry.getKey(), tmp);
+        }
+
+        for (List<Pair<Double, SFNode<TypeA>>> l : schemaAsList.values()) {
+            l.sort(java.util.Comparator.<Pair<Double, SFNode<TypeA>>>comparingDouble(Pair::getFirst).reversed());
+        }
+
+        List<Pair<Pair<SFNode<TypeA>, SFNode<TypeA>>, Double>> result = new ArrayList<>();
+
+        for (Entry<SFNode<TypeA>, List<Pair<Double, SFNode<TypeA>>>> entry : schemaAsList.entrySet()) {
+            if (entry.getValue() == null || entry.getValue().size() == 0) {
+                continue;
+            }
+            result.add(new Pair<>(new Pair<>(entry.getKey(), entry.getValue().get(0).getSecond()), entry.getValue().get(0).getFirst()));
+        }
+
+        return result;
+    }
+
+    private List<Pair<Pair<SFNode<TypeA>, SFNode<TypeA>>, Double>> hungarianAlgorithm(SimpleDirectedGraph<IPGNode<TypeA>, CoeffEdge> ipg) {
+        throw new RuntimeException();
     }
 
     private List<Pair<Pair<SFNode<TypeA>, SFNode<TypeA>>, Double>> filterStableMarriage(SimpleDirectedGraph<IPGNode<TypeA>, CoeffEdge> ipg) {
@@ -653,6 +694,10 @@ public class SimilarityFloodingAlgorithm<TypeA extends SFMatchable, TypeB extend
 
     public void setRemoveOid(boolean removeOid) {
         this.removeOid = removeOid;
+    }
+
+    public void setFilter(Filter filter) {
+        this.filter = filter;
     }
 
     @Override
