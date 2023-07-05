@@ -28,8 +28,8 @@ public class HungarianAlgorithm<TypeA> extends Filter<TypeA> {
     private int[] colIsCovered;
     private int[] rowIsCovered;
     private int[] staredZeroesInRow;
-    private int rowLength;
-    private int colLength;
+    private int rowCount;
+    private int colCount;
     private List<Pair<SFNode<TypeA>, List<Pair<Double, SFNode<TypeA>>>>> schemaAsArray = new ArrayList<>();
 
 
@@ -41,21 +41,39 @@ public class HungarianAlgorithm<TypeA> extends Filter<TypeA> {
     public List<Pair<Pair<SFNode<TypeA>, SFNode<TypeA>>, Double>> run(SimpleDirectedGraph<IPGNode<TypeA>, CoeffEdge> ipg) {
         prepareMatrix(ipg);
 
-        rowLength = getRowLength();
-        colLength = schemaAsArray.size();
+        rowCount = schemaAsArray.size();
+        colCount = getColCount();
 
-        zeroInRow = new int[rowLength];
-        zeroInCol = new int[colLength];
-        colIsCovered = new int[colLength];
-        rowIsCovered = new int[rowLength];
-        staredZeroesInRow = new int[rowLength];
+        zeroInRow = new int[rowCount];
+        zeroInCol = new int[colCount];
+        colIsCovered = new int[colCount];
+        rowIsCovered = new int[rowCount];
+        staredZeroesInRow = new int[rowCount];
 
         Arrays.fill(staredZeroesInRow, -1);
         Arrays.fill(zeroInRow, -1);
         Arrays.fill(zeroInCol, -1);
 
-        reduceRow();
+        double maxEntry = Double.MIN_VALUE;
+        for (int colIndex = 0; colIndex < colCount; colIndex++) {
+            for (int rowIndex = 0; rowIndex < rowCount; rowIndex++) {
+                Pair<SFNode<TypeA>, List<Pair<Double, SFNode<TypeA>>>> row = schemaAsArray.get(rowIndex);
+                double sim = row.getSecond().get(colIndex).getFirst();
+                maxEntry = Math.max(sim, maxEntry);
+            }
+        }
+
+        for (int colIndex = 0; colIndex < colCount; colIndex++) {
+            for (int rowIndex = 0; rowIndex < rowCount; rowIndex++) {
+                Pair<SFNode<TypeA>, List<Pair<Double, SFNode<TypeA>>>> row = schemaAsArray.get(rowIndex);
+                double newSimilarity = maxEntry - row.getSecond().get(colIndex).getFirst();
+                Pair<Double, SFNode<TypeA>> elem = new Pair<>(newSimilarity, row.getSecond().get(colIndex).getSecond());
+                row.getSecond().set(colIndex, elem);
+            }
+        }
+
         reduceColumn();
+        reduceRow();
         markZeroWithSquare();
         markCoveredColumn();
 
@@ -78,12 +96,12 @@ public class HungarianAlgorithm<TypeA> extends Filter<TypeA> {
             }
         }
 
-        int[][] optimalAssignment = new int[Math.min(rowLength, colLength)][];
-        for (int i = 0; i < zeroInCol.length; i++) {
-            optimalAssignment[i] = new int[]{i, zeroInCol[i]};
+        List<Pair<Pair<SFNode<TypeA>, SFNode<TypeA>>, Double>> result = new ArrayList<>();
+        for (int col = 0; col < zeroInCol.length; col++) {
+            int row = zeroInCol[col];
+            result.add(new Pair<>(new Pair<>(schemaAsArray.get(row).getFirst(), schemaAsArray.get(row).getSecond().get(col).getSecond()), schemaAsArray.get(row).getSecond().get(col).getFirst()));
         }
-        System.out.println();
-        return null;
+        return result;
     }
 
     private boolean isZeroInRow(int[] notCoveredZero) {
@@ -97,11 +115,11 @@ public class HungarianAlgorithm<TypeA> extends Filter<TypeA> {
     }
 
     private void markZeroWithSquare() {
-        int[] rowHasZero = new int[rowLength];
-        int[] colHasZero = new int[colLength];
+        int[] rowHasZero = new int[rowCount];
+        int[] colHasZero = new int[colCount];
 
-        for (int rowIndex = 0; rowIndex < rowLength; rowIndex++) {
-            for (int colIndex = 0; colIndex < colLength; colIndex++) {
+        for (int colIndex = 0; colIndex < colCount; colIndex++) {
+            for (int rowIndex = 0; rowIndex < rowCount; rowIndex++) {
                 if (schemaAsArray.get(rowIndex).getSecond().get(colIndex).getFirst() == 0.0 && rowHasZero[rowIndex] == 0 && colHasZero[colIndex] == 0) {
                     rowHasZero[rowIndex] = 1;
                     colHasZero[colIndex] = 1;
@@ -112,7 +130,7 @@ public class HungarianAlgorithm<TypeA> extends Filter<TypeA> {
         }
     }
 
-    private int getRowLength() {
+    private int getColCount() {
         return schemaAsArray.stream().max(java.util.Comparator.<Pair<SFNode<TypeA>, List<Pair<Double, SFNode<TypeA>>>>>comparingDouble(x -> x.getSecond().size()).reversed())
             .orElse(new Pair<>(null, new ArrayList<>()))
             .getSecond().size();
@@ -149,7 +167,7 @@ public class HungarianAlgorithm<TypeA> extends Filter<TypeA> {
     }
 
     private void reduceColumn() {
-        for (int colIndex = 0; colIndex < colLength; colIndex++) {
+        for (int colIndex = 0; colIndex < colCount; colIndex++) {
             double minColSimilarity = 0.0;
 
             for (Pair<SFNode<TypeA>, List<Pair<Double, SFNode<TypeA>>>> row : schemaAsArray) {
@@ -160,7 +178,7 @@ public class HungarianAlgorithm<TypeA> extends Filter<TypeA> {
                 }
             }
 
-            for (int rowIndex = 0; rowIndex < rowLength; rowIndex++) {
+            for (int rowIndex = 0; rowIndex < rowCount; rowIndex++) {
                 Pair<SFNode<TypeA>, List<Pair<Double, SFNode<TypeA>>>> row = schemaAsArray.get(rowIndex);
                 double newSimilarity = row.getSecond().get(colIndex).getFirst() - minColSimilarity;
                 Pair<Double, SFNode<TypeA>> elem = new Pair<>(newSimilarity, row.getSecond().get(colIndex).getSecond());
@@ -173,14 +191,14 @@ public class HungarianAlgorithm<TypeA> extends Filter<TypeA> {
         for (Pair<SFNode<TypeA>, List<Pair<Double, SFNode<TypeA>>>> row : schemaAsArray) {
             double minRowSimilarity = 0.0;
 
-            for (int i = 0; i < rowLength; i++) {
+            for (int i = 0; i < colCount; i++) {
                 double localMin = row.getSecond().get(i).getFirst();
                 if (localMin != 0.0) {
                     minRowSimilarity = Math.min(minRowSimilarity, localMin);
                 }
             }
 
-            for (int i = 0; i < rowLength; i++) {
+            for (int i = 0; i < colCount; i++) {
                 double newSimilarity = row.getSecond().get(i).getFirst() - minRowSimilarity;
                 Pair<Double, SFNode<TypeA>> elem = new Pair<>(newSimilarity, row.getSecond().get(i).getSecond());
                 row.getSecond().set(i, elem);
@@ -189,9 +207,9 @@ public class HungarianAlgorithm<TypeA> extends Filter<TypeA> {
     }
 
     private int[] findNotCoveredZero() {
-        for (int rowIndex = 0; rowIndex < rowLength; rowIndex++) {
+        for (int rowIndex = 0; rowIndex < rowCount; rowIndex++) {
             if (rowIsCovered[rowIndex] == 0) {
-                for (int colIndex = 0; colIndex < colLength; colIndex++) {
+                for (int colIndex = 0; colIndex < colCount; colIndex++) {
                     if (schemaAsArray.get(rowIndex).getSecond().get(colIndex).getFirst() == 0.0 && colIsCovered[colIndex] == 0) {
                         staredZeroesInRow[rowIndex] = colIndex;
                         return new int[]{rowIndex, colIndex};
@@ -205,8 +223,8 @@ public class HungarianAlgorithm<TypeA> extends Filter<TypeA> {
     private void applyMinUncoveredValueToMatrix() {
         double minUncoveredValue = getSmallestUncoveredValue();
         if (minUncoveredValue > 0) {
-            for (int rowIndex = 0; rowIndex < rowLength; rowIndex++) {
-                for (int colIndex = 0; colIndex < colLength; colIndex++) {
+            for (int rowIndex = 0; rowIndex < rowCount; rowIndex++) {
+                for (int colIndex = 0; colIndex < colCount; colIndex++) {
                     if (rowIsCovered[rowIndex] == 1 && colIsCovered[colIndex] == 1) {
 
                         // Add min to all twice-covered values
@@ -231,11 +249,11 @@ public class HungarianAlgorithm<TypeA> extends Filter<TypeA> {
 
     private double getSmallestUncoveredValue() {
         double minUncoveredValue = Double.MAX_VALUE;
-        for (int rowIndex = 0; rowIndex < rowLength; rowIndex++) {
+        for (int rowIndex = 0; rowIndex < rowCount; rowIndex++) {
             if (rowIsCovered[rowIndex] == 1) {
                 continue;
             }
-            for (int colIndex = 0; colIndex < rowIndex; colIndex++) {
+            for (int colIndex = 0; colIndex < colCount; colIndex++) {
                 Pair<SFNode<TypeA>, List<Pair<Double, SFNode<TypeA>>>> row = schemaAsArray.get(rowIndex);
                 if (colIsCovered[colIndex] == 0 && row.getSecond().get(colIndex).getFirst() < minUncoveredValue) {
                     minUncoveredValue = row.getSecond().get(colIndex).getFirst();

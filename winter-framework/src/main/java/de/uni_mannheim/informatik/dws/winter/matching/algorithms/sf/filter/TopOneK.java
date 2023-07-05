@@ -23,19 +23,44 @@ public class TopOneK<TypeA> extends Filter<TypeA> {
 
     @Override
     public List<Pair<Pair<SFNode<TypeA>, SFNode<TypeA>>, Double>> run(SimpleDirectedGraph<IPGNode<TypeA>, CoeffEdge> ipg) {
-        HashMap<SFNode<TypeA>, List<Pair<Double, SFNode<TypeA>>>> schemaAsList = getClearSfAsList(clearSfCompressed(ipg));
+        HashMap<SFNode<TypeA>, HashMap<SFNode<TypeA>, Double>> schema = clearSfCompressed(ipg);
 
-        for (List<Pair<Double, SFNode<TypeA>>> l : schemaAsList.values()) {
-            l.sort(java.util.Comparator.<Pair<Double, SFNode<TypeA>>>comparingDouble(Pair::getFirst).reversed());
+        List<Pair<SFNode<TypeA>, Pair<SFNode<TypeA>, Double>>> sortedFlatList = new ArrayList<>();
+        for (Entry<SFNode<TypeA>, HashMap<SFNode<TypeA>, Double>> entry : schema.entrySet()) {
+            SFNode<TypeA> nodeA = entry.getKey();
+            for (Entry<SFNode<TypeA>, Double> entryValue : entry.getValue().entrySet()) {
+                SFNode<TypeA> nodeB = entryValue.getKey();
+                double sim = entryValue.getValue();
+                sortedFlatList.add(new Pair<>(nodeA, new Pair<>(nodeB, sim)));
+            }
         }
 
-        List<Pair<Pair<SFNode<TypeA>, SFNode<TypeA>>, Double>> result = new ArrayList<>();
+        sortedFlatList.sort(java.util.Comparator.<Pair<SFNode<TypeA>, Pair<SFNode<TypeA>, Double>>>comparingDouble(x -> x.getSecond().getSecond()).reversed());
 
-        for (Entry<SFNode<TypeA>, List<Pair<Double, SFNode<TypeA>>>> entry : schemaAsList.entrySet()) {
-            if (entry.getValue() == null || entry.getValue().size() == 0) {
+        List<Pair<Pair<SFNode<TypeA>, SFNode<TypeA>>, Double>> result = new ArrayList<>();
+        List<Pair<SFNode<TypeA>, Pair<SFNode<TypeA>, Double>>> sortedFlatListCopy = new ArrayList<>(sortedFlatList);
+        for (Pair<SFNode<TypeA>, Pair<SFNode<TypeA>, Double>> list : sortedFlatListCopy) {
+            HashMap<SFNode<TypeA>, Double> entry = schema.get(list.getFirst());
+
+            SFNode<TypeA> nodeA = list.getFirst();
+            SFNode<TypeA> nodeB = null;
+            if (entry == null || entry.values().size() == 0) {
                 continue;
             }
-            result.add(new Pair<>(new Pair<>(entry.getKey(), entry.getValue().get(0).getSecond()), entry.getValue().get(0).getFirst()));
+
+            for (int i = 0; i < sortedFlatList.size(); i++) {
+                Pair<SFNode<TypeA>, Pair<SFNode<TypeA>, Double>> pair = sortedFlatList.get(i);
+                if (pair.getFirst().equals(nodeA)) {
+                    nodeB = pair.getSecond().getFirst();
+                    double sim = pair.getSecond().getSecond();
+                    result.add(new Pair<>(new Pair<>(nodeA, nodeB), sim));
+                    break;
+                }
+            }
+
+            sortedFlatList.removeIf(x -> x.getFirst().equals(nodeA));
+            SFNode<TypeA> finalNodeB = nodeB;
+            sortedFlatList.removeIf(x -> x.getSecond().getFirst().equals(finalNodeB));
         }
 
         return result;

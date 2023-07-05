@@ -571,8 +571,8 @@ public class SimilarityFloodingAlgorithmTest {
 
         assertEquals(areaTotal2.getValue(), resultList.get(areaTotal.getValue()));
         assertEquals(country2.getValue(), resultList.get(country.getValue()));
-        assertEquals(country.getValue(), resultList.get(city.getValue()));
-        assertEquals(state.getValue(), resultList.get(name.getValue()));
+        assertEquals(state.getValue(), resultList.get(city.getValue()));
+        assertEquals(area.getValue(), resultList.get(name.getValue()));
     }
 
     @Test
@@ -617,8 +617,8 @@ public class SimilarityFloodingAlgorithmTest {
 
         assertEquals(areaTotal2.getValue(), resultList.get(areaTotal.getValue()));
         assertEquals(country2.getValue(), resultList.get(country.getValue()));
-        assertEquals(country.getValue(), resultList.get(city.getValue()));
-        assertEquals(state.getValue(), resultList.get(name.getValue()));
+        assertEquals(state.getValue(), resultList.get(city.getValue()));
+        assertEquals(area.getValue(), resultList.get(name.getValue()));
     }
 
     private HashMap<String, HashMap<String, Double>> getResultMap(SimilarityFloodingAlgorithm<SFTestMatchable, SFTestMatchable> similarityFloodingAlgorithm) {
