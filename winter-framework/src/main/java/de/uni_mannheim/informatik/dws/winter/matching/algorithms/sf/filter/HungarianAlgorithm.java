@@ -58,15 +58,22 @@ public class HungarianAlgorithm<TypeA> extends Filter<TypeA> {
         for (int colIndex = 0; colIndex < colCount; colIndex++) {
             for (int rowIndex = 0; rowIndex < rowCount; rowIndex++) {
                 Pair<SFNode<TypeA>, List<Pair<Double, SFNode<TypeA>>>> row = schemaAsArray.get(rowIndex);
-                double sim = row.getSecond().get(colIndex).getFirst();
-                maxEntry = Math.max(sim, maxEntry);
+                Double sim = row.getSecond().get(colIndex).getFirst();
+                if (sim != placeHolderForMaxValue()) {
+                    maxEntry = Math.max(sim, maxEntry);
+                }
             }
         }
 
         for (int colIndex = 0; colIndex < colCount; colIndex++) {
             for (int rowIndex = 0; rowIndex < rowCount; rowIndex++) {
                 Pair<SFNode<TypeA>, List<Pair<Double, SFNode<TypeA>>>> row = schemaAsArray.get(rowIndex);
-                double newSimilarity = maxEntry - row.getSecond().get(colIndex).getFirst();
+                double newSimilarity;
+                if (row.getSecond().get(colIndex).getFirst() == placeHolderForMaxValue()) {
+                    newSimilarity = maxEntry;
+                } else {
+                    newSimilarity = maxEntry - row.getSecond().get(colIndex).getFirst();
+                }
                 Pair<Double, SFNode<TypeA>> elem = new Pair<>(newSimilarity, row.getSecond().get(colIndex).getSecond());
                 row.getSecond().set(colIndex, elem);
             }
@@ -102,6 +109,10 @@ public class HungarianAlgorithm<TypeA> extends Filter<TypeA> {
             result.add(new Pair<>(new Pair<>(schemaAsArray.get(row).getFirst(), schemaAsArray.get(row).getSecond().get(col).getSecond()), schemaAsArray.get(row).getSecond().get(col).getFirst()));
         }
         return result;
+    }
+
+    private static double placeHolderForMaxValue() {
+        return 1111.11;
     }
 
     private boolean isZeroInRow(int[] notCoveredZero) {
@@ -157,12 +168,26 @@ public class HungarianAlgorithm<TypeA> extends Filter<TypeA> {
                 if (!nodeSimMap.containsKey(nodeA)) {
                     nodeSimMap.put(nodeA, new HashMap<>());
                 }
-                nodeSimMap.get(nodeA).put(nodeB, 0.0);
+                nodeSimMap.get(nodeA).put(nodeB, placeHolderForMaxValue());
             }
         }
 
         for (Entry<SFNode<TypeA>, List<Pair<Double, SFNode<TypeA>>>> entry : getClearSfAsList(nodeSimMap).entrySet()) {
             schemaAsArray.add(new Pair<>(entry.getKey(), entry.getValue()));
+        }
+
+        rowCount = schemaAsArray.size();
+        colCount = getColCount();
+        int maxCount = Math.max(rowCount, colCount);
+
+        if (schemaAsArray.size() < maxCount) {
+            for (int i = schemaAsArray.size(); i < maxCount; i++) {
+                List<Pair<Double, SFNode<TypeA>>> tmp = new ArrayList<>();
+                for (Pair<Double, SFNode<TypeA>> pair : schemaAsArray.get(0).getSecond()) {
+                    tmp.add(new Pair<>(placeHolderForMaxValue(), pair.getSecond()));
+                }
+                schemaAsArray.add(i, new Pair<>(schemaAsArray.get(0).getFirst(), tmp));
+            }
         }
     }
 
