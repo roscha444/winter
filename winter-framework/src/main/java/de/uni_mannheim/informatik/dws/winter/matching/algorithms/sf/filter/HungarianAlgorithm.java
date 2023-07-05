@@ -30,7 +30,7 @@ public class HungarianAlgorithm<TypeA> extends Filter<TypeA> {
     private int[] staredZeroesInRow;
     private int rowCount;
     private int colCount;
-    private List<Pair<SFNode<TypeA>, List<Pair<Double, SFNode<TypeA>>>>> schemaAsArray = new ArrayList<>();
+    private List<Pair<SFNode<TypeA>, List<Pair<Double, SFNode<TypeA>>>>> schemaAsArray;
 
 
     public HungarianAlgorithm(double minSim, boolean removeOid) {
@@ -39,10 +39,10 @@ public class HungarianAlgorithm<TypeA> extends Filter<TypeA> {
 
     @Override
     public List<Pair<Pair<SFNode<TypeA>, SFNode<TypeA>>, Double>> run(SimpleDirectedGraph<IPGNode<TypeA>, CoeffEdge> ipg) {
-        prepareMatrix(ipg);
+        schemaAsArray = prepareMatrix(ipg);
 
         rowCount = schemaAsArray.size();
-        colCount = getColCount();
+        colCount = getColCount(schemaAsArray);
 
         zeroInRow = new int[rowCount];
         zeroInCol = new int[colCount];
@@ -106,7 +106,12 @@ public class HungarianAlgorithm<TypeA> extends Filter<TypeA> {
         List<Pair<Pair<SFNode<TypeA>, SFNode<TypeA>>, Double>> result = new ArrayList<>();
         for (int col = 0; col < zeroInCol.length; col++) {
             int row = zeroInCol[col];
-            result.add(new Pair<>(new Pair<>(schemaAsArray.get(row).getFirst(), schemaAsArray.get(row).getSecond().get(col).getSecond()), schemaAsArray.get(row).getSecond().get(col).getFirst()));
+            if (prepareMatrix(ipg).get(row).getSecond().get(col).getFirst() != placeHolderForMaxValue() && prepareMatrix(ipg).get(row).getSecond().get(col).getFirst() >= minSim && !schemaAsArray.get(
+                row).getFirst().getGetIdentifier().equals("DUMMY") && !schemaAsArray.get(row).getSecond()
+                .get(col).getSecond().getGetIdentifier().equals("DUMMY")) {
+                result.add(
+                    new Pair<>(new Pair<>(schemaAsArray.get(row).getFirst(), schemaAsArray.get(row).getSecond().get(col).getSecond()), prepareMatrix(ipg).get(row).getSecond().get(col).getFirst()));
+            }
         }
         return result;
     }
@@ -141,13 +146,14 @@ public class HungarianAlgorithm<TypeA> extends Filter<TypeA> {
         }
     }
 
-    private int getColCount() {
+    private int getColCount(List<Pair<SFNode<TypeA>, List<Pair<Double, SFNode<TypeA>>>>> schemaAsArray) {
         return schemaAsArray.stream().max(java.util.Comparator.<Pair<SFNode<TypeA>, List<Pair<Double, SFNode<TypeA>>>>>comparingDouble(x -> x.getSecond().size()).reversed())
             .orElse(new Pair<>(null, new ArrayList<>()))
             .getSecond().size();
     }
 
-    private void prepareMatrix(SimpleDirectedGraph<IPGNode<TypeA>, CoeffEdge> ipg) {
+    private List<Pair<SFNode<TypeA>, List<Pair<Double, SFNode<TypeA>>>>> prepareMatrix(SimpleDirectedGraph<IPGNode<TypeA>, CoeffEdge> ipg) {
+        List<Pair<SFNode<TypeA>, List<Pair<Double, SFNode<TypeA>>>>> schemaAsArray = new ArrayList<>();
         HashMap<SFNode<TypeA>, HashMap<SFNode<TypeA>, Double>> nodeSimMap = new HashMap<>();
         for (IPGNode<TypeA> node : ipg.vertexSet()) {
             SFNode<TypeA> nodeA = node.getPairwiseConnectivityNode().getA();
@@ -177,7 +183,7 @@ public class HungarianAlgorithm<TypeA> extends Filter<TypeA> {
         }
 
         rowCount = schemaAsArray.size();
-        colCount = getColCount();
+        colCount = getColCount(schemaAsArray);
         int maxCount = Math.max(rowCount, colCount);
 
         if (schemaAsArray.size() < maxCount) {
@@ -186,9 +192,10 @@ public class HungarianAlgorithm<TypeA> extends Filter<TypeA> {
                 for (Pair<Double, SFNode<TypeA>> pair : schemaAsArray.get(0).getSecond()) {
                     tmp.add(new Pair<>(placeHolderForMaxValue(), pair.getSecond()));
                 }
-                schemaAsArray.add(i, new Pair<>(schemaAsArray.get(0).getFirst(), tmp));
+                schemaAsArray.add(i, new Pair<>(new SFNode<>("DUMMY", SFNodeType.LITERAL), tmp));
             }
         }
+        return schemaAsArray;
     }
 
     private void reduceColumn() {
