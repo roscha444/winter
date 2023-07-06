@@ -71,4 +71,73 @@ public class MatchingEvaluatorTest extends TestCase {
         assertEquals(0.5, recallAtGT);
     }
 
+    public void testEvaluateRowBinaryPrecision() {
+        MatchingEvaluator<Movie, Attribute> evaluator = new MatchingEvaluator<>();
+        List<Correspondence<Movie, Attribute>> correspondences = new LinkedList<>();
+        MatchingGoldStandard gold = new MatchingGoldStandard();
+        gold.setComplete(true);
+
+        Movie name = new Movie("name", "test");
+        Movie phone = new Movie("phone", "test");
+        Movie address = new Movie("address", "test2");
+
+        Movie fname = new Movie("fname", "test2");
+        Movie ph = new Movie("ph", "test2");
+        Movie addr = new Movie("addr", "test2");
+
+        correspondences.add(new Correspondence<Movie, Attribute>(name, fname, 0.9, null));
+        correspondences.add(new Correspondence<Movie, Attribute>(name, ph, 0.8, null));
+        correspondences.add(new Correspondence<Movie, Attribute>(name, addr, 0.7, null));
+
+        correspondences.add(new Correspondence<Movie, Attribute>(phone, fname, 0.8, null));
+        correspondences.add(new Correspondence<Movie, Attribute>(phone, ph, 0.7, null));
+        correspondences.add(new Correspondence<Movie, Attribute>(phone, addr, 0.6, null));
+
+        correspondences.add(new Correspondence<Movie, Attribute>(address, fname, 0.7, null));
+        correspondences.add(new Correspondence<Movie, Attribute>(address, ph, 0.6, null));
+        correspondences.add(new Correspondence<Movie, Attribute>(address, addr, 0.5, null));
+
+        gold.addPositiveExample(new Pair<String, String>(name.getIdentifier(), fname.getIdentifier()));
+        gold.addPositiveExample(new Pair<String, String>(phone.getIdentifier(), ph.getIdentifier()));
+        gold.addPositiveExample(new Pair<String, String>(address.getIdentifier(), addr.getIdentifier()));
+
+        double rowBinaryPrecision = evaluator.evaluateRowBinaryPrecision(correspondences, gold);
+
+        assertEquals(0.5, rowBinaryPrecision);
+    }
+
+    public void testEvaluateRowNonBinaryPrecision() {
+        MatchingEvaluator<Movie, Attribute> evaluator = new MatchingEvaluator<>();
+        List<Correspondence<Movie, Attribute>> correspondences = new LinkedList<>();
+        MatchingGoldStandard gold = new MatchingGoldStandard();
+        gold.setComplete(true);
+
+        Movie name = new Movie("name", "test");
+        Movie phone = new Movie("phone", "test");
+        Movie address = new Movie("address", "test2");
+
+        Movie fname = new Movie("fname", "test2");
+        Movie ph = new Movie("ph", "test2");
+        Movie addr = new Movie("addr", "test2");
+
+        correspondences.add(new Correspondence<Movie, Attribute>(name, fname, 0.9, null));
+        correspondences.add(new Correspondence<Movie, Attribute>(name, ph, 0.8, null));
+        correspondences.add(new Correspondence<Movie, Attribute>(name, addr, 0.7, null));
+
+        correspondences.add(new Correspondence<Movie, Attribute>(phone, fname, 0.8, null));
+        correspondences.add(new Correspondence<Movie, Attribute>(phone, ph, 0.7, null));
+        correspondences.add(new Correspondence<Movie, Attribute>(phone, addr, 0.6, null));
+
+        correspondences.add(new Correspondence<Movie, Attribute>(address, fname, 0.7, null));
+        correspondences.add(new Correspondence<Movie, Attribute>(address, ph, 0.6, null));
+        correspondences.add(new Correspondence<Movie, Attribute>(address, addr, 0.5, null));
+
+        gold.addPositiveExample(new Pair<String, String>(name.getIdentifier(), fname.getIdentifier()));
+        gold.addPositiveExample(new Pair<String, String>(phone.getIdentifier(), ph.getIdentifier()));
+        gold.addPositiveExample(new Pair<String, String>(address.getIdentifier(), addr.getIdentifier()));
+
+        double rowNonBinaryPrecision = evaluator.evaluateRowNonBinaryPrecision(correspondences, gold);
+
+        assertEquals(0.5, rowNonBinaryPrecision);
+    }
 }

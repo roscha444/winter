@@ -82,11 +82,12 @@ public class MatchingEvaluator<RecordType extends Matchable, SchemaElementType e
                 if (goldStandard.containsPositive(correspondence.getFirstRecord(), correspondence.getSecondRecord())) {
                     tp++;
                     matched++;
-                    continue;
+                } else {
+                    fn++;
                 }
+            } else {
+                fn++;
             }
-
-            fn++;
         }
 
         if (tp + fn == 0.0) {
@@ -94,6 +95,234 @@ public class MatchingEvaluator<RecordType extends Matchable, SchemaElementType e
         }
 
         return (double) tp / (tp + fn);
+    }
+
+    /**
+     * evaluateBinaryPrecisionRow
+     *
+     * @param correspondences the correspondences to evaluate
+     * @param goldStandard the gold standard
+     * @return the result of the evaluation
+     */
+    public double evaluateRowBinaryRecall(Collection<Correspondence<RecordType, SchemaElementType>> correspondences, MatchingGoldStandard goldStandard) {
+
+        int tp = 0;
+        int fn = 0;
+        double tpSim = 0.0;
+        double fpSim = 0.0;
+
+        for (Correspondence<RecordType, SchemaElementType> correspondence : correspondences) {
+            if (goldStandard.containsPositive(correspondence.getFirstRecord(), correspondence.getSecondRecord())) {
+                continue;
+            }
+
+            RecordType nodeA = correspondence.getFirstRecord();
+            RecordType nodeB = correspondence.getFirstRecord();
+
+            List<Correspondence<RecordType, SchemaElementType>> rankedCandiateIndices = new ArrayList<>();
+
+            for (Correspondence<RecordType, SchemaElementType> rowSearch : correspondences) {
+                if (nodeA.equals(rowSearch.getFirstRecord()) && !nodeB.equals(rowSearch.getSecondRecord())) {
+                    rankedCandiateIndices.add(rowSearch);
+                }
+            }
+
+            List<Correspondence<RecordType, SchemaElementType>> matchIndices = new ArrayList<>();
+            for (Correspondence<RecordType, SchemaElementType> rowSearch : correspondences) {
+                if (nodeA.equals(rowSearch.getFirstRecord()) && !nodeB.equals(rowSearch.getSecondRecord()) && goldStandard.containsPositive(rowSearch.getFirstRecord(), rowSearch.getSecondRecord())) {
+                    matchIndices.add(rowSearch);
+                }
+            }
+
+            // todo check the reversed()
+            rankedCandiateIndices.sort(java.util.Comparator.<Correspondence<RecordType, SchemaElementType>>comparingDouble(Correspondence::getSimilarityScore).reversed());
+
+            for (Correspondence<RecordType, SchemaElementType> candidateIndex : rankedCandiateIndices) {
+                if (goldStandard.containsPositive(candidateIndex.getFirstRecord(), candidateIndex.getSecondRecord())) {
+                    tp++;
+                    tpSim += candidateIndex.getSimilarityScore();
+                }
+                // todo cpunt fn
+                if (tp == matchIndices.size()) {
+                    break;
+                }
+            }
+        }
+
+        return (double) tp / (tp + fn);
+    }
+
+    /**
+     * evaluateNonBinaryPrecisionRow
+     *
+     * @param correspondences the correspondences to evaluate
+     * @param goldStandard the gold standard
+     * @return the result of the evaluation
+     */
+    public double evaluateRowNonBinaryRecall(Collection<Correspondence<RecordType, SchemaElementType>> correspondences, MatchingGoldStandard goldStandard) {
+
+        int tp = 0;
+        int fp = 0;
+        double tpSim = 0.0;
+        double fnSim = 0.0;
+
+        for (Correspondence<RecordType, SchemaElementType> correspondence : correspondences) {
+            if (goldStandard.containsPositive(correspondence.getFirstRecord(), correspondence.getSecondRecord())) {
+                continue;
+            }
+
+            RecordType nodeA = correspondence.getFirstRecord();
+            RecordType nodeB = correspondence.getFirstRecord();
+
+            List<Correspondence<RecordType, SchemaElementType>> rankedCandiateIndices = new ArrayList<>();
+
+            for (Correspondence<RecordType, SchemaElementType> rowSearch : correspondences) {
+                if (nodeA.equals(rowSearch.getFirstRecord()) && !nodeB.equals(rowSearch.getSecondRecord())) {
+                    rankedCandiateIndices.add(rowSearch);
+                }
+            }
+
+            List<Correspondence<RecordType, SchemaElementType>> matchIndices = new ArrayList<>();
+            for (Correspondence<RecordType, SchemaElementType> rowSearch : correspondences) {
+                if (nodeA.equals(rowSearch.getFirstRecord()) && !nodeB.equals(rowSearch.getSecondRecord()) && goldStandard.containsPositive(rowSearch.getFirstRecord(), rowSearch.getSecondRecord())) {
+                    matchIndices.add(rowSearch);
+                }
+            }
+
+            // todo check the reversed()
+            rankedCandiateIndices.sort(java.util.Comparator.<Correspondence<RecordType, SchemaElementType>>comparingDouble(Correspondence::getSimilarityScore).reversed());
+
+            for (Correspondence<RecordType, SchemaElementType> candidateIndex : rankedCandiateIndices) {
+                if (goldStandard.containsPositive(candidateIndex.getFirstRecord(), candidateIndex.getSecondRecord())) {
+                    tp++;
+                    tpSim += candidateIndex.getSimilarityScore();
+                }
+                // todo cpunt fn
+
+                if (tp == matchIndices.size()) {
+                    break;
+                }
+            }
+        }
+
+        return (double) tpSim / (tpSim + fnSim);
+    }
+
+    /**
+     * evaluateBinaryPrecisionRow
+     *
+     * @param correspondences the correspondences to evaluate
+     * @param goldStandard the gold standard
+     * @return the result of the evaluation
+     */
+    public double evaluateRowBinaryPrecision(Collection<Correspondence<RecordType, SchemaElementType>> correspondences, MatchingGoldStandard goldStandard) {
+        int tp = 0;
+        int fp = 0;
+        double tpSim = 0.0;
+        double fpSim = 0.0;
+
+        for (Correspondence<RecordType, SchemaElementType> correspondence : correspondences) {
+            RecordType nodeA = correspondence.getFirstRecord();
+            RecordType nodeB = correspondence.getSecondRecord();
+
+            if (!goldStandard.containsPositive(nodeA, nodeB)) {
+                continue;
+            }
+
+            List<Correspondence<RecordType, SchemaElementType>> rankedCandiateIndices = new ArrayList<>();
+
+            for (Correspondence<RecordType, SchemaElementType> rowSearch : correspondences) {
+                if (nodeA.equals(rowSearch.getFirstRecord())) {
+                    rankedCandiateIndices.add(rowSearch);
+                }
+            }
+
+            List<Correspondence<RecordType, SchemaElementType>> matchIndices = new ArrayList<>();
+            for (Correspondence<RecordType, SchemaElementType> rowSearch : correspondences) {
+                if (nodeA.equals(rowSearch.getFirstRecord()) && goldStandard.containsPositive(rowSearch.getFirstRecord(), rowSearch.getSecondRecord())) {
+                    matchIndices.add(rowSearch);
+                }
+            }
+
+            // todo check the reversed()
+            rankedCandiateIndices.sort(java.util.Comparator.<Correspondence<RecordType, SchemaElementType>>comparingDouble(Correspondence::getSimilarityScore).reversed());
+
+            int localTp = 0;
+            for (Correspondence<RecordType, SchemaElementType> candidateIndex : rankedCandiateIndices) {
+                if (goldStandard.containsPositive(candidateIndex.getFirstRecord(), candidateIndex.getSecondRecord())) {
+                    localTp++;
+                    tpSim += candidateIndex.getSimilarityScore();
+                } else {
+                    fp++;
+                    fpSim += candidateIndex.getSimilarityScore();
+                }
+                if (localTp == matchIndices.size()) {
+                    break;
+                }
+            }
+            tp += localTp;
+        }
+
+        return (double) tp / (tp + fp);
+    }
+
+    /**
+     * evaluateNonBinaryPrecisionRow
+     *
+     * @param correspondences the correspondences to evaluate
+     * @param goldStandard the gold standard
+     * @return the result of the evaluation
+     */
+    public double evaluateRowNonBinaryPrecision(Collection<Correspondence<RecordType, SchemaElementType>> correspondences, MatchingGoldStandard goldStandard) {
+
+        int tp = 0;
+        int fp = 0;
+        double tpSim = 0.0;
+        double fpSim = 0.0;
+
+        for (Correspondence<RecordType, SchemaElementType> correspondence : correspondences) {
+            RecordType nodeA = correspondence.getFirstRecord();
+            RecordType nodeB = correspondence.getSecondRecord();
+
+            if (!goldStandard.containsPositive(nodeA, nodeB)) {
+                continue;
+            }
+
+            List<Correspondence<RecordType, SchemaElementType>> rankedCandiateIndices = new ArrayList<>();
+
+            for (Correspondence<RecordType, SchemaElementType> rowSearch : correspondences) {
+                if (nodeA.equals(rowSearch.getFirstRecord())) {
+                    rankedCandiateIndices.add(rowSearch);
+                }
+            }
+
+            List<Correspondence<RecordType, SchemaElementType>> matchIndices = new ArrayList<>();
+            for (Correspondence<RecordType, SchemaElementType> rowSearch : correspondences) {
+                if (nodeA.equals(rowSearch.getFirstRecord()) && goldStandard.containsPositive(rowSearch.getFirstRecord(), rowSearch.getSecondRecord())) {
+                    matchIndices.add(rowSearch);
+                }
+            }
+
+            // todo check the reversed()
+            rankedCandiateIndices.sort(java.util.Comparator.<Correspondence<RecordType, SchemaElementType>>comparingDouble(Correspondence::getSimilarityScore).reversed());
+
+            int localTp = 0;
+            for (Correspondence<RecordType, SchemaElementType> candidateIndex : rankedCandiateIndices) {
+                if (goldStandard.containsPositive(candidateIndex.getFirstRecord(), candidateIndex.getSecondRecord())) {
+                    localTp++;
+                    tpSim += candidateIndex.getSimilarityScore();
+                } else {
+                    fp++;
+                    fpSim += candidateIndex.getSimilarityScore();
+                }
+                if (localTp == matchIndices.size()) {
+                    break;
+                }
+            }
+            tp += localTp;
+        }
+
+        return (double) tpSim / (tpSim + fpSim);
     }
 
     /**
