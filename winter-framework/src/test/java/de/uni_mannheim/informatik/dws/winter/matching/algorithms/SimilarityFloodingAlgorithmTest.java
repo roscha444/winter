@@ -678,7 +678,7 @@ public class SimilarityFloodingAlgorithmTest {
 
         SimilarityFloodingAlgorithm<SFTestMatchable, SFTestMatchable> similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm<>("Personnel", columnsSchemaOne, "Employee", columnsSchemaTwo,
             new SFComparatorLevenshtein(), FixpointFormula.A);
-        similarityFloodingAlgorithm.setRemoveOid(true);
+        similarityFloodingAlgorithm.setRemoveOid(false);
         similarityFloodingAlgorithm.setMinSim(0.10);
         similarityFloodingAlgorithm.setFilter(Filter.HungarianAlgorithm);
 

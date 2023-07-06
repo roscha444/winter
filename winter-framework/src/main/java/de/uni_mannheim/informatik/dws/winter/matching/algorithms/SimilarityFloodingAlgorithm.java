@@ -4,7 +4,7 @@ import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.Filter;
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.FixpointFormula;
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.filter.HungarianAlgorithm;
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.filter.StableMarriage;
-import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.filter.TopOneK;
+import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.filter.TopOne;
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.ipg.CoeffEdge;
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.ipg.IPGNode;
 import de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.pcg.LabeledEdge;
@@ -92,7 +92,7 @@ public class SimilarityFloodingAlgorithm<TypeA extends SFMatchable, TypeB extend
         if (filter.equals(Filter.HungarianAlgorithm)) {
             engagements = new HungarianAlgorithm<TypeA>(minSim, removeOid).run(ipg);
         } else if (filter.equals(Filter.TopOneK)) {
-            engagements = new TopOneK<TypeA>(minSim, removeOid).run(ipg);
+            engagements = new TopOne<TypeA>(minSim, removeOid).run(ipg);
         } else {
             engagements = new StableMarriage<TypeA>(minSim, removeOid).run(ipg);
         }

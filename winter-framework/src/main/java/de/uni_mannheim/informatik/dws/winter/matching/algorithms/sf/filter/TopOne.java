@@ -11,13 +11,13 @@ import java.util.Map.Entry;
 import org.jgrapht.graph.SimpleDirectedGraph;
 
 /**
- * Top One K as SF filter
+ * TopOne as SF filter
  *
  * @author Robin Schumacher (info@robin-schumacher.com)
  */
-public class TopOneK<TypeA> extends Filter<TypeA> {
+public class TopOne<TypeA> extends Filter<TypeA> {
 
-    public TopOneK(double minSim, boolean removeOid) {
+    public TopOne(double minSim, boolean removeOid) {
         super(minSim, removeOid);
     }
 
@@ -48,8 +48,7 @@ public class TopOneK<TypeA> extends Filter<TypeA> {
                 continue;
             }
 
-            for (int i = 0; i < sortedFlatList.size(); i++) {
-                Pair<SFNode<TypeA>, Pair<SFNode<TypeA>, Double>> pair = sortedFlatList.get(i);
+            for (Pair<SFNode<TypeA>, Pair<SFNode<TypeA>, Double>> pair : sortedFlatList) {
                 if (pair.getFirst().equals(nodeA)) {
                     nodeB = pair.getSecond().getFirst();
                     double sim = pair.getSecond().getSecond();

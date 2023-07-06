@@ -39,7 +39,7 @@ public class HungarianAlgorithm<TypeA> extends Filter<TypeA> {
 
     @Override
     public List<Pair<Pair<SFNode<TypeA>, SFNode<TypeA>>, Double>> run(SimpleDirectedGraph<IPGNode<TypeA>, CoeffEdge> ipg) {
-        schemaAsArray = prepareMatrix(ipg);
+        schemaAsArray = createQuadraticMatrix(ipg);
 
         rowCount = schemaAsArray.size();
         colCount = getColCount(schemaAsArray);
@@ -54,6 +54,46 @@ public class HungarianAlgorithm<TypeA> extends Filter<TypeA> {
         Arrays.fill(zeroInRow, -1);
         Arrays.fill(zeroInCol, -1);
 
+        inverseMatrixToFindMaximumMatching();
+        reduceColumn();
+        reduceRow();
+        markZeroWithSquare();
+        markCoveredColumn();
+
+        while (!allColumnsAreCovered()) {
+            int[] notCoveredZero = findNotCoveredZero();
+
+            while (notCoveredZero == null) {
+                applyMinUncoveredValueToMatrix();
+                notCoveredZero = findNotCoveredZero();
+            }
+
+            if (isZeroInRow(notCoveredZero)) {
+                crossZero(notCoveredZero);
+                markCoveredColumn();
+            } else {
+                rowIsCovered[notCoveredZero[0]] = 1;
+                colIsCovered[zeroInRow[notCoveredZero[0]]] = 0;
+                applyMinUncoveredValueToMatrix();
+            }
+        }
+
+        List<Pair<Pair<SFNode<TypeA>, SFNode<TypeA>>, Double>> result = new ArrayList<>();
+        for (int col = 0; col < zeroInCol.length; col++) {
+            int row = zeroInCol[col];
+            if (createQuadraticMatrix(ipg).get(row).getSecond().get(col).getFirst() != placeHolderForMaxValue() && createQuadraticMatrix(ipg).get(row).getSecond().get(col).getFirst() >= minSim
+                && !schemaAsArray.get(
+                row).getFirst().getGetIdentifier().equals("DUMMY") && !schemaAsArray.get(row).getSecond()
+                .get(col).getSecond().getGetIdentifier().equals("DUMMY")) {
+                result.add(
+                    new Pair<>(new Pair<>(schemaAsArray.get(row).getFirst(), schemaAsArray.get(row).getSecond().get(col).getSecond()),
+                        createQuadraticMatrix(ipg).get(row).getSecond().get(col).getFirst()));
+            }
+        }
+        return result;
+    }
+
+    private void inverseMatrixToFindMaximumMatching() {
         double maxEntry = Double.MIN_VALUE;
         for (int colIndex = 0; colIndex < colCount; colIndex++) {
             for (int rowIndex = 0; rowIndex < rowCount; rowIndex++) {
@@ -78,42 +118,6 @@ public class HungarianAlgorithm<TypeA> extends Filter<TypeA> {
                 row.getSecond().set(colIndex, elem);
             }
         }
-
-        reduceColumn();
-        reduceRow();
-        markZeroWithSquare();
-        markCoveredColumn();
-
-        while (!allColumnsAreCovered()) {
-            int[] notCoveredZero = findNotCoveredZero();
-
-            while (notCoveredZero == null) {
-                applyMinUncoveredValueToMatrix();
-                notCoveredZero = findNotCoveredZero();
-            }
-
-            if (isZeroInRow(notCoveredZero)) {
-                // TODO
-                crossZero(notCoveredZero);
-                markCoveredColumn();
-            } else {
-                rowIsCovered[notCoveredZero[0]] = 1;
-                colIsCovered[zeroInRow[notCoveredZero[0]]] = 0;
-                applyMinUncoveredValueToMatrix();
-            }
-        }
-
-        List<Pair<Pair<SFNode<TypeA>, SFNode<TypeA>>, Double>> result = new ArrayList<>();
-        for (int col = 0; col < zeroInCol.length; col++) {
-            int row = zeroInCol[col];
-            if (prepareMatrix(ipg).get(row).getSecond().get(col).getFirst() != placeHolderForMaxValue() && prepareMatrix(ipg).get(row).getSecond().get(col).getFirst() >= minSim && !schemaAsArray.get(
-                row).getFirst().getGetIdentifier().equals("DUMMY") && !schemaAsArray.get(row).getSecond()
-                .get(col).getSecond().getGetIdentifier().equals("DUMMY")) {
-                result.add(
-                    new Pair<>(new Pair<>(schemaAsArray.get(row).getFirst(), schemaAsArray.get(row).getSecond().get(col).getSecond()), prepareMatrix(ipg).get(row).getSecond().get(col).getFirst()));
-            }
-        }
-        return result;
     }
 
     private static double placeHolderForMaxValue() {
@@ -152,29 +156,26 @@ public class HungarianAlgorithm<TypeA> extends Filter<TypeA> {
             .getSecond().size();
     }
 
-    private List<Pair<SFNode<TypeA>, List<Pair<Double, SFNode<TypeA>>>>> prepareMatrix(SimpleDirectedGraph<IPGNode<TypeA>, CoeffEdge> ipg) {
+    private List<Pair<SFNode<TypeA>, List<Pair<Double, SFNode<TypeA>>>>> createQuadraticMatrix(SimpleDirectedGraph<IPGNode<TypeA>, CoeffEdge> ipg) {
         List<Pair<SFNode<TypeA>, List<Pair<Double, SFNode<TypeA>>>>> schemaAsArray = new ArrayList<>();
         HashMap<SFNode<TypeA>, HashMap<SFNode<TypeA>, Double>> nodeSimMap = new HashMap<>();
         for (IPGNode<TypeA> node : ipg.vertexSet()) {
             SFNode<TypeA> nodeA = node.getPairwiseConnectivityNode().getA();
             SFNode<TypeA> nodeB = node.getPairwiseConnectivityNode().getB();
 
-            // TODO
             if (nodeA.getMatchable() == null || nodeB.getMatchable() == null) {
                 continue;
             }
 
-            if (node.getCurrSim() > minSim && (removeOid || nodeA.getType().equals(SFNodeType.LITERAL) && nodeB.getType().equals(SFNodeType.LITERAL))) {
+            if (removeOid || nodeA.getType().equals(SFNodeType.LITERAL) && nodeB.getType().equals(SFNodeType.LITERAL)) {
                 if (!nodeSimMap.containsKey(nodeA)) {
                     nodeSimMap.put(nodeA, new HashMap<>());
                 }
-                nodeSimMap.get(nodeA).put(nodeB, node.getCurrSim());
-                // TODO
-            } else if (node.getCurrSim() <= minSim && removeOid) {
-                if (!nodeSimMap.containsKey(nodeA)) {
-                    nodeSimMap.put(nodeA, new HashMap<>());
+                if (node.getCurrSim() > minSim) {
+                    nodeSimMap.get(nodeA).put(nodeB, node.getCurrSim());
+                } else {
+                    nodeSimMap.get(nodeA).put(nodeB, placeHolderForMaxValue());
                 }
-                nodeSimMap.get(nodeA).put(nodeB, placeHolderForMaxValue());
             }
         }
 
