@@ -12,42 +12,63 @@
 
 package de.uni_mannheim.informatik.dws.winter.matching;
 
-import java.util.LinkedList;
-import java.util.List;
-
-import de.uni_mannheim.informatik.dws.winter.matching.MatchingEvaluator;
 import de.uni_mannheim.informatik.dws.winter.model.Correspondence;
 import de.uni_mannheim.informatik.dws.winter.model.MatchingGoldStandard;
 import de.uni_mannheim.informatik.dws.winter.model.Pair;
 import de.uni_mannheim.informatik.dws.winter.model.Performance;
 import de.uni_mannheim.informatik.dws.winter.model.defaultmodel.Attribute;
 import de.uni_mannheim.informatik.dws.winter.usecase.movies.model.Movie;
+import java.util.LinkedList;
+import java.util.List;
 import junit.framework.TestCase;
 
 public class MatchingEvaluatorTest extends TestCase {
 
-	public void testEvaluateMatching() {
-		MatchingEvaluator<Movie, Attribute> evaluator = new MatchingEvaluator<>();
-		List<Correspondence<Movie, Attribute>> correspondences = new LinkedList<>();
-		MatchingGoldStandard gold = new MatchingGoldStandard();
-		
-		Movie movie1 = new Movie("movie1", "test");
-		Movie movie2 = new Movie("movie2", "test");
-		Movie movie3 = new Movie("movie3", "test2");
-		Movie movie4 = new Movie("movie4", "test2");
+    public void testEvaluateMatching() {
+        MatchingEvaluator<Movie, Attribute> evaluator = new MatchingEvaluator<>();
+        List<Correspondence<Movie, Attribute>> correspondences = new LinkedList<>();
+        MatchingGoldStandard gold = new MatchingGoldStandard();
 
-		correspondences.add(new Correspondence<Movie, Attribute>(movie1, movie3, 1.0, null));
-		correspondences.add(new Correspondence<Movie, Attribute>(movie1, movie2, 1.0, null));
-		
-		gold.addPositiveExample(new Pair<String, String>(movie3.getIdentifier(), movie1.getIdentifier()));
-		gold.addPositiveExample(new Pair<String, String>(movie2.getIdentifier(), movie4.getIdentifier()));
-		gold.addNegativeExample(new Pair<String, String>(movie1.getIdentifier(), movie2.getIdentifier()));
-		gold.addNegativeExample(new Pair<String, String>(movie3.getIdentifier(), movie4.getIdentifier()));
-		
-		Performance p = evaluator.evaluateMatching(correspondences, gold);
-		
-		assertEquals(0.5, p.getPrecision());
-		assertEquals(0.5, p.getRecall());
-	}
+        Movie movie1 = new Movie("movie1", "test");
+        Movie movie2 = new Movie("movie2", "test");
+        Movie movie3 = new Movie("movie3", "test2");
+        Movie movie4 = new Movie("movie4", "test2");
+
+        correspondences.add(new Correspondence<Movie, Attribute>(movie1, movie3, 1.0, null));
+        correspondences.add(new Correspondence<Movie, Attribute>(movie1, movie2, 1.0, null));
+
+        gold.addPositiveExample(new Pair<String, String>(movie3.getIdentifier(), movie1.getIdentifier()));
+        gold.addPositiveExample(new Pair<String, String>(movie2.getIdentifier(), movie4.getIdentifier()));
+        gold.addNegativeExample(new Pair<String, String>(movie1.getIdentifier(), movie2.getIdentifier()));
+        gold.addNegativeExample(new Pair<String, String>(movie3.getIdentifier(), movie4.getIdentifier()));
+
+        Performance p = evaluator.evaluateMatching(correspondences, gold);
+
+        assertEquals(0.5, p.getPrecision());
+        assertEquals(0.5, p.getRecall());
+    }
+
+    public void testEvaluateRecallAtGroundTruth() {
+        MatchingEvaluator<Movie, Attribute> evaluator = new MatchingEvaluator<>();
+        List<Correspondence<Movie, Attribute>> correspondences = new LinkedList<>();
+        MatchingGoldStandard gold = new MatchingGoldStandard();
+        gold.setComplete(true);
+
+        Movie movie1 = new Movie("movie1", "test");
+        Movie movie2 = new Movie("movie2", "test");
+        Movie movie3 = new Movie("movie3", "test2");
+        Movie movie4 = new Movie("movie4", "test2");
+
+        correspondences.add(new Correspondence<Movie, Attribute>(movie1, movie2, 1.0, null));
+        correspondences.add(new Correspondence<Movie, Attribute>(movie1, movie3, 0.8, null));
+        correspondences.add(new Correspondence<Movie, Attribute>(movie2, movie4, 0.6, null));
+
+        gold.addPositiveExample(new Pair<String, String>(movie3.getIdentifier(), movie1.getIdentifier()));
+        gold.addPositiveExample(new Pair<String, String>(movie2.getIdentifier(), movie4.getIdentifier()));
+
+        double recallAtGT = evaluator.evaluateRecallAtGroundTruth(correspondences, gold);
+
+        assertEquals(0.5, recallAtGT);
+    }
 
 }
