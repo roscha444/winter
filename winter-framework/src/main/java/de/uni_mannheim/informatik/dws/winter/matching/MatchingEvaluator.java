@@ -76,36 +76,17 @@ public class MatchingEvaluator<RecordType extends Matchable, SchemaElementType e
         List<Correspondence<RecordType, SchemaElementType>> correspondenceList = new ArrayList<>(correspondences);
         correspondenceList.sort(java.util.Comparator.<Correspondence<RecordType, SchemaElementType>>comparingDouble(Correspondence::getSimilarityScore).reversed());
 
-        for (int i = 0; i < correspondenceList.size() && i < correct_max; i++) {
-            Correspondence<RecordType, SchemaElementType> correspondence = correspondenceList.get(i);
-            if (goldStandard.containsPositive(correspondence.getFirstRecord(), correspondence.getSecondRecord())) {
-                tp++;
-                matched++;
-
-                logger.trace(String.format("[correct] %s,%s,%s", correspondence.getFirstRecord().getIdentifier(),
-                    correspondence.getSecondRecord().getIdentifier(),
-                    Double.toString(correspondence.getSimilarityScore())));
-
-                // remove pair from positives
-                Iterator<Pair<String, String>> it = positives.iterator();
-                while (it.hasNext()) {
-                    Pair<String, String> p = it.next();
-                    String id1 = correspondence.getFirstRecord().getIdentifier();
-                    String id2 = correspondence.getSecondRecord().getIdentifier();
-
-                    if (p.getFirst().equals(id1) && p.getSecond().equals(id2)
-                        || p.getFirst().equals(id2) && p.getSecond().equals(id1)) {
-                        it.remove();
-                    }
+        for (int i = 0; i < correct_max; i++) {
+            if (i < correspondenceList.size()) {
+                Correspondence<RecordType, SchemaElementType> correspondence = correspondenceList.get(i);
+                if (goldStandard.containsPositive(correspondence.getFirstRecord(), correspondence.getSecondRecord())) {
+                    tp++;
+                    matched++;
+                    continue;
                 }
-            } else if (goldStandard.isComplete() || goldStandard.containsNegative(correspondence.getFirstRecord(), correspondence.getSecondRecord())) {
-                matched++;
-                fn++;
-                logger.trace(String.format("[wrong] %s,%s,%s", correspondence.getFirstRecord().getIdentifier(),
-                    correspondence.getSecondRecord().getIdentifier(),
-                    Double.toString(correspondence.getSimilarityScore())));
-
             }
+
+            fn++;
         }
 
         if (tp + fn == 0.0) {
