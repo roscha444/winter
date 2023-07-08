@@ -96,7 +96,7 @@ public class MatchingEvaluator<RecordType extends Matchable, SchemaElementType e
 
         return (double) tp / (tp + fn);
     }
-    
+
     /**
      * Evaluates Binary-Precision against the gold standard
      *
@@ -107,17 +107,21 @@ public class MatchingEvaluator<RecordType extends Matchable, SchemaElementType e
     public double evaluateColBinaryPrecision(Collection<Correspondence<RecordType, SchemaElementType>> correspondences, MatchingGoldStandard goldStandard) {
         int tp = 0;
         int fp = 0;
-
+        List<Integer> checkMatrices = new ArrayList<>();
         for (Correspondence<RecordType, SchemaElementType> correspondence : correspondences) {
             RecordType nodeA = correspondence.getFirstRecord();
             RecordType nodeB = correspondence.getSecondRecord();
 
-            if (!goldStandard.containsPositive(nodeA, nodeB)) {
+            int nodeATableId = nodeA.getDataSourceIdentifier();
+            int nodeBTableId = getSecondTableId(correspondence);
+
+            checkMatrices.add(nodeATableId);
+            if (!goldStandard.containsPositive(nodeA, nodeB) && !checkMatrices.contains(nodeATableId)) {
                 continue;
             }
 
-            List<Correspondence<RecordType, SchemaElementType>> rankedCandidates = getColCandidatesRanked(correspondences, nodeB);
-            List<Correspondence<RecordType, SchemaElementType>> matchesInCol = getColMatches(correspondences, goldStandard, nodeB);
+            List<Correspondence<RecordType, SchemaElementType>> rankedCandidates = getColCandidatesRanked(nodeATableId, nodeBTableId, correspondences, nodeB);
+            List<Correspondence<RecordType, SchemaElementType>> matchesInCol = getColMatches(nodeATableId, nodeBTableId, correspondences, goldStandard, nodeB);
 
             int localTp = 0;
             for (Correspondence<RecordType, SchemaElementType> possibleCandidate : rankedCandidates) {
@@ -136,6 +140,20 @@ public class MatchingEvaluator<RecordType extends Matchable, SchemaElementType e
         return (double) tp / (tp + fp);
     }
 
+    private int getSecondTableId(Correspondence<RecordType, SchemaElementType> correspondence) {
+        int nodeBTableId = correspondence.getSecondRecord().getDataSourceIdentifier();
+
+        if (correspondence.getCausalCorrespondences() != null) {
+            for (Correspondence<SchemaElementType, Matchable> schemaElementTypeMatchableCorrespondence : correspondence.getCausalCorrespondences().get()) {
+                if (schemaElementTypeMatchableCorrespondence.getSecondRecord().getDataSourceIdentifier() != -1) {
+                    nodeBTableId = schemaElementTypeMatchableCorrespondence.getSecondRecord().getDataSourceIdentifier();
+                    break;
+                }
+            }
+        }
+        return nodeBTableId;
+    }
+
     /**
      * Evaluates Non-Binary-Precision against the gold standard
      *
@@ -146,17 +164,21 @@ public class MatchingEvaluator<RecordType extends Matchable, SchemaElementType e
     public double evaluateColNonBinaryPrecision(Collection<Correspondence<RecordType, SchemaElementType>> correspondences, MatchingGoldStandard goldStandard) {
         double tpSim = 0.0;
         double fpSim = 0.0;
-
+        List<Integer> checkMatrices = new ArrayList<>();
         for (Correspondence<RecordType, SchemaElementType> correspondence : correspondences) {
             RecordType nodeA = correspondence.getFirstRecord();
             RecordType nodeB = correspondence.getSecondRecord();
 
-            if (!goldStandard.containsPositive(nodeA, nodeB)) {
+            int nodeATableId = nodeA.getDataSourceIdentifier();
+            int nodeBTableId = getSecondTableId(correspondence);
+
+            checkMatrices.add(nodeATableId);
+            if (!goldStandard.containsPositive(nodeA, nodeB) && !checkMatrices.contains(nodeATableId)) {
                 continue;
             }
 
-            List<Correspondence<RecordType, SchemaElementType>> rankedCandidates = getColCandidatesRanked(correspondences, nodeB);
-            List<Correspondence<RecordType, SchemaElementType>> matchesInCol = getColMatches(correspondences, goldStandard, nodeB);
+            List<Correspondence<RecordType, SchemaElementType>> rankedCandidates = getColCandidatesRanked(nodeATableId, nodeBTableId, correspondences, nodeB);
+            List<Correspondence<RecordType, SchemaElementType>> matchesInCol = getColMatches(nodeATableId, nodeBTableId, correspondences, goldStandard, nodeB);
 
             int localTp = 0;
             for (Correspondence<RecordType, SchemaElementType> possibleCandidate : rankedCandidates) {
@@ -185,17 +207,21 @@ public class MatchingEvaluator<RecordType extends Matchable, SchemaElementType e
     public double evaluateRowBinaryPrecision(Collection<Correspondence<RecordType, SchemaElementType>> correspondences, MatchingGoldStandard goldStandard) {
         int tp = 0;
         int fp = 0;
-
+        List<Integer> checkMatrices = new ArrayList<>();
         for (Correspondence<RecordType, SchemaElementType> correspondence : correspondences) {
             RecordType nodeA = correspondence.getFirstRecord();
             RecordType nodeB = correspondence.getSecondRecord();
 
-            if (!goldStandard.containsPositive(nodeA, nodeB)) {
+            int nodeATableId = nodeA.getDataSourceIdentifier();
+            int nodeBTableId = getSecondTableId(correspondence);
+
+            checkMatrices.add(nodeATableId);
+            if (!goldStandard.containsPositive(nodeA, nodeB) && !checkMatrices.contains(nodeATableId)) {
                 continue;
             }
 
-            List<Correspondence<RecordType, SchemaElementType>> rankedCandidates = getRowCandidatesRanked(correspondences, nodeA);
-            List<Correspondence<RecordType, SchemaElementType>> matchesInRow = getRowMatches(correspondences, goldStandard, nodeA);
+            List<Correspondence<RecordType, SchemaElementType>> rankedCandidates = getRowCandidatesRanked(nodeATableId, nodeBTableId, correspondences, nodeA);
+            List<Correspondence<RecordType, SchemaElementType>> matchesInRow = getRowMatches(nodeATableId, nodeBTableId, correspondences, goldStandard, nodeA);
 
             int localTp = 0;
             for (Correspondence<RecordType, SchemaElementType> candidateIndex : rankedCandidates) {
@@ -224,17 +250,21 @@ public class MatchingEvaluator<RecordType extends Matchable, SchemaElementType e
     public double evaluateRowNonBinaryPrecision(Collection<Correspondence<RecordType, SchemaElementType>> correspondences, MatchingGoldStandard goldStandard) {
         double tpSim = 0.0;
         double fpSim = 0.0;
-
+        List<Integer> checkMatrices = new ArrayList<>();
         for (Correspondence<RecordType, SchemaElementType> correspondence : correspondences) {
             RecordType nodeA = correspondence.getFirstRecord();
             RecordType nodeB = correspondence.getSecondRecord();
 
-            if (!goldStandard.containsPositive(nodeA, nodeB)) {
+            int nodeATableId = nodeA.getDataSourceIdentifier();
+            int nodeBTableId = getSecondTableId(correspondence);
+
+            checkMatrices.add(nodeATableId);
+            if (!goldStandard.containsPositive(nodeA, nodeB) && !checkMatrices.contains(nodeATableId)) {
                 continue;
             }
 
-            List<Correspondence<RecordType, SchemaElementType>> rankedCandidates = getRowCandidatesRanked(correspondences, nodeA);
-            List<Correspondence<RecordType, SchemaElementType>> matchesInRow = getRowMatches(correspondences, goldStandard, nodeA);
+            List<Correspondence<RecordType, SchemaElementType>> rankedCandidates = getRowCandidatesRanked(nodeATableId, nodeBTableId, correspondences, nodeA);
+            List<Correspondence<RecordType, SchemaElementType>> matchesInRow = getRowMatches(nodeATableId, nodeBTableId, correspondences, goldStandard, nodeA);
 
             int localTp = 0;
             for (Correspondence<RecordType, SchemaElementType> possibleCandidate : rankedCandidates) {
@@ -362,22 +392,35 @@ public class MatchingEvaluator<RecordType extends Matchable, SchemaElementType e
         w.close();
     }
 
-    private List<Correspondence<RecordType, SchemaElementType>> getColMatches(Collection<Correspondence<RecordType, SchemaElementType>> correspondences, MatchingGoldStandard goldStandard,
+    private List<Correspondence<RecordType, SchemaElementType>> getColMatches(int firstTableId, int secondTableId, Collection<Correspondence<RecordType, SchemaElementType>> correspondences,
+        MatchingGoldStandard goldStandard,
         RecordType nodeB) {
         List<Correspondence<RecordType, SchemaElementType>> matchesInRow = new ArrayList<>();
-        for (Correspondence<RecordType, SchemaElementType> rowSearch : correspondences) {
-            if (nodeB.equals(rowSearch.getSecondRecord()) && goldStandard.containsPositive(rowSearch.getFirstRecord(), rowSearch.getSecondRecord())) {
-                matchesInRow.add(rowSearch);
+        for (Correspondence<RecordType, SchemaElementType> possibleCandidate : correspondences) {
+
+            int candidateFirstTableId = possibleCandidate.getFirstRecord().getDataSourceIdentifier();
+            int candidateSecondTableId = getSecondTableId(possibleCandidate);
+
+            if (candidateFirstTableId == firstTableId && candidateSecondTableId == secondTableId
+                && nodeB.equals(possibleCandidate.getSecondRecord()) && goldStandard.containsPositive(
+                possibleCandidate.getFirstRecord(), possibleCandidate.getSecondRecord())) {
+                matchesInRow.add(possibleCandidate);
             }
         }
         return matchesInRow;
     }
 
-    private List<Correspondence<RecordType, SchemaElementType>> getColCandidatesRanked(Collection<Correspondence<RecordType, SchemaElementType>> correspondences, RecordType nodeB) {
+    private List<Correspondence<RecordType, SchemaElementType>> getColCandidatesRanked(int firstTableId, int secondTableId, Collection<Correspondence<RecordType, SchemaElementType>> correspondences,
+        RecordType nodeB) {
         List<Correspondence<RecordType, SchemaElementType>> rankedCandidates = new ArrayList<>();
 
         for (Correspondence<RecordType, SchemaElementType> possibleCandidate : correspondences) {
-            if (nodeB.equals(possibleCandidate.getSecondRecord())) {
+
+            int candidateFirstTableId = possibleCandidate.getFirstRecord().getDataSourceIdentifier();
+            int candidateSecondTableId = getSecondTableId(possibleCandidate);
+
+            if (candidateFirstTableId == firstTableId && candidateSecondTableId == secondTableId && nodeB.equals(
+                possibleCandidate.getSecondRecord())) {
                 rankedCandidates.add(possibleCandidate);
             }
         }
@@ -385,22 +428,34 @@ public class MatchingEvaluator<RecordType extends Matchable, SchemaElementType e
         return rankedCandidates;
     }
 
-    private List<Correspondence<RecordType, SchemaElementType>> getRowMatches(Collection<Correspondence<RecordType, SchemaElementType>> correspondences, MatchingGoldStandard goldStandard,
+    private List<Correspondence<RecordType, SchemaElementType>> getRowMatches(int firstTableId, int secondTableId, Collection<Correspondence<RecordType, SchemaElementType>> correspondences,
+        MatchingGoldStandard goldStandard,
         RecordType nodeA) {
         List<Correspondence<RecordType, SchemaElementType>> matchesInRow = new ArrayList<>();
-        for (Correspondence<RecordType, SchemaElementType> rowSearch : correspondences) {
-            if (nodeA.equals(rowSearch.getFirstRecord()) && goldStandard.containsPositive(rowSearch.getFirstRecord(), rowSearch.getSecondRecord())) {
-                matchesInRow.add(rowSearch);
+        for (Correspondence<RecordType, SchemaElementType> possibleCandidate : correspondences) {
+
+            int candidateFirstTableId = possibleCandidate.getFirstRecord().getDataSourceIdentifier();
+            int candidateSecondTableId = getSecondTableId(possibleCandidate);
+
+            if (candidateFirstTableId == firstTableId && candidateSecondTableId == secondTableId
+                && nodeA.equals(possibleCandidate.getFirstRecord())
+                && goldStandard.containsPositive(possibleCandidate.getFirstRecord(), possibleCandidate.getSecondRecord())) {
+                matchesInRow.add(possibleCandidate);
             }
         }
         return matchesInRow;
     }
 
-    private List<Correspondence<RecordType, SchemaElementType>> getRowCandidatesRanked(Collection<Correspondence<RecordType, SchemaElementType>> correspondences, RecordType nodeA) {
+    private List<Correspondence<RecordType, SchemaElementType>> getRowCandidatesRanked(int firstTableId, int secondTableId, Collection<Correspondence<RecordType, SchemaElementType>> correspondences,
+        RecordType nodeA) {
         List<Correspondence<RecordType, SchemaElementType>> rankedCandidates = new ArrayList<>();
 
         for (Correspondence<RecordType, SchemaElementType> possibleCandidate : correspondences) {
-            if (nodeA.equals(possibleCandidate.getFirstRecord())) {
+
+            int candidateFirstTableId = possibleCandidate.getFirstRecord().getDataSourceIdentifier();
+            int candidateSecondTableId = getSecondTableId(possibleCandidate);
+
+            if (candidateFirstTableId == firstTableId && candidateSecondTableId == secondTableId && nodeA.equals(possibleCandidate.getFirstRecord())) {
                 rankedCandidates.add(possibleCandidate);
             }
         }
