@@ -151,9 +151,11 @@ public class HungarianAlgorithm<TypeA> extends Filter<TypeA> {
     }
 
     private int getColCount(List<Pair<SFNode<TypeA>, List<Pair<Double, SFNode<TypeA>>>>> schemaAsArray) {
-        return schemaAsArray.stream().max(java.util.Comparator.<Pair<SFNode<TypeA>, List<Pair<Double, SFNode<TypeA>>>>>comparingDouble(x -> x.getSecond().size()).reversed())
-            .orElse(new Pair<>(null, new ArrayList<>()))
-            .getSecond().size();
+        int max = Integer.MIN_VALUE;
+        for (Pair<SFNode<TypeA>, List<Pair<Double, SFNode<TypeA>>>> entry : schemaAsArray) {
+            max = Math.max(max, entry.getSecond().size());
+        }
+        return max;
     }
 
     private List<Pair<SFNode<TypeA>, List<Pair<Double, SFNode<TypeA>>>>> createQuadraticMatrix(SimpleDirectedGraph<IPGNode<TypeA>, CoeffEdge> ipg) {
@@ -171,7 +173,7 @@ public class HungarianAlgorithm<TypeA> extends Filter<TypeA> {
                 if (!nodeSimMap.containsKey(nodeA)) {
                     nodeSimMap.put(nodeA, new HashMap<>());
                 }
-                if (node.getCurrSim() > minSim) {
+                if (node.getCurrSim() >= minSim) {
                     nodeSimMap.get(nodeA).put(nodeB, node.getCurrSim());
                 } else {
                     nodeSimMap.get(nodeA).put(nodeB, placeHolderForMaxValue());
@@ -187,13 +189,19 @@ public class HungarianAlgorithm<TypeA> extends Filter<TypeA> {
         colCount = getColCount(schemaAsArray);
         int maxCount = Math.max(rowCount, colCount);
 
-        if (schemaAsArray.size() < maxCount) {
-            for (int i = schemaAsArray.size(); i < maxCount; i++) {
-                List<Pair<Double, SFNode<TypeA>>> tmp = new ArrayList<>();
-                for (Pair<Double, SFNode<TypeA>> pair : schemaAsArray.get(0).getSecond()) {
-                    tmp.add(new Pair<>(placeHolderForMaxValue(), pair.getSecond()));
-                }
-                schemaAsArray.add(i, new Pair<>(new SFNode<>("DUMMY", SFNodeType.LITERAL), tmp));
+        // Fill missing rows
+        for (int i = schemaAsArray.size(); i < maxCount; i++) {
+            List<Pair<Double, SFNode<TypeA>>> tmp = new ArrayList<>();
+            for (Pair<Double, SFNode<TypeA>> pair : schemaAsArray.get(0).getSecond()) {
+                tmp.add(new Pair<>(placeHolderForMaxValue(), pair.getSecond()));
+            }
+            schemaAsArray.add(i, new Pair<>(new SFNode<>("DUMMY", SFNodeType.LITERAL), tmp));
+        }
+
+        // Fill missing columns
+        for (Pair<SFNode<TypeA>, List<Pair<Double, SFNode<TypeA>>>> sfNodeListPair : schemaAsArray) {
+            for (int j = sfNodeListPair.getSecond().size(); j < maxCount; j++) {
+                sfNodeListPair.getSecond().add(new Pair<>(placeHolderForMaxValue(), new SFNode<>("DUMMY", SFNodeType.LITERAL)));
             }
         }
         return schemaAsArray;

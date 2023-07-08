@@ -1,5 +1,7 @@
 package de.uni_mannheim.informatik.dws.winter.matching.algorithms.sf.pcg;
 
+import java.util.Objects;
+
 /**
  * This class represents a node in the graph representation for a relational schema according to the SF-algorithm.
  *
@@ -50,5 +52,22 @@ public class SFNode<TypeA> {
             ", type=" + type +
             ", matchable=" + matchable +
             '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        SFNode<?> sfNode = (SFNode<?>) o;
+        return Objects.equals(getIdentifier, sfNode.getIdentifier) && type == sfNode.type && Objects.equals(matchable, sfNode.matchable);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getIdentifier, type, matchable);
     }
 }
