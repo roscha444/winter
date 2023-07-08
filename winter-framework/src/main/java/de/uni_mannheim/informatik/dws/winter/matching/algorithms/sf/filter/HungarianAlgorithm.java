@@ -181,8 +181,30 @@ public class HungarianAlgorithm<TypeA> extends Filter<TypeA> {
             }
         }
 
+        // add rows
         for (Entry<SFNode<TypeA>, List<Pair<Double, SFNode<TypeA>>>> entry : getClearSfAsList(nodeSimMap).entrySet()) {
-            schemaAsArray.add(new Pair<>(entry.getKey(), entry.getValue()));
+            schemaAsArray.add(new Pair<>(entry.getKey(), new ArrayList<>()));
+        }
+
+        // add columns
+        for (Pair<SFNode<TypeA>, List<Pair<Double, SFNode<TypeA>>>> row : schemaAsArray) {
+            for (Entry<SFNode<TypeA>, List<Pair<Double, SFNode<TypeA>>>> entry : getClearSfAsList(nodeSimMap).entrySet()) {
+                SFNode<TypeA> firstNode = entry.getKey();
+                for (Pair<Double, SFNode<TypeA>> listElement : entry.getValue()) {
+                    SFNode<TypeA> secondNode;
+                    double sim;
+
+                    if (row.getFirst().equals(firstNode)) {
+                        secondNode = listElement.getSecond();
+                        sim = listElement.getFirst();
+                    } else {
+                        secondNode = new SFNode<>("DUMMY", SFNodeType.LITERAL);
+                        sim = placeHolderForMaxValue();
+                    }
+
+                    row.getSecond().add(new Pair<>(sim, secondNode));
+                }
+            }
         }
 
         rowCount = schemaAsArray.size();
