@@ -697,6 +697,48 @@ public class SimilarityFloodingAlgorithmTest {
         assertEquals(country2.getValue(), resultList.get(country.getValue()));
     }
 
+    @Test
+    public void testShouldRunSimilarityFloodingAlgorithm_EXAMPLE_PAPER() {
+        // prepare
+        List<SFTestMatchable> columnsSchemaOne = new ArrayList<>();
+        SFTestMatchable country = new SFTestMatchable(DataType.string, "country", "country");
+        columnsSchemaOne.add(country);
+        SFTestMatchable popDens = new SFTestMatchable(DataType.numeric, "pop. dens", "pop. dens");
+        columnsSchemaOne.add(popDens);
+        SFTestMatchable area = new SFTestMatchable(DataType.numeric, "area", "area");
+        columnsSchemaOne.add(area);
+        SFTestMatchable population = new SFTestMatchable(DataType.numeric, "population", "population");
+        columnsSchemaOne.add(population);
+
+        List<SFTestMatchable> columnsSchemaTwo = new ArrayList<>();
+        SFTestMatchable country2 = new SFTestMatchable(DataType.string, "country", "country");
+        columnsSchemaTwo.add(country2);
+        SFTestMatchable areaTotal = new SFTestMatchable(DataType.numeric, "areaTotal", "areaTotal");
+        columnsSchemaTwo.add(areaTotal);
+        SFTestMatchable populationDensity = new SFTestMatchable(DataType.numeric, "populationDensity", "populationDensity");
+        columnsSchemaTwo.add(populationDensity);
+        SFTestMatchable capitallabel = new SFTestMatchable(DataType.string, "capitallabel", "capitallabel");
+        columnsSchemaTwo.add(capitallabel);
+        SFTestMatchable capital = new SFTestMatchable(DataType.string, "capital", "capital");
+        columnsSchemaTwo.add(capital);
+
+        SimilarityFloodingAlgorithm<SFTestMatchable, SFTestMatchable> similarityFloodingAlgorithm = new SimilarityFloodingAlgorithm<>("CountryWB", columnsSchemaOne, "CountryDB", columnsSchemaTwo,
+            new SFComparatorLevenshtein(), FixpointFormula.A);
+        similarityFloodingAlgorithm.setRemoveOid(false);
+        similarityFloodingAlgorithm.setFilter(Filter.StableMarriage);
+
+        // run
+        similarityFloodingAlgorithm.run();
+
+        // validate
+        Processable<Correspondence<SFTestMatchable, SFTestMatchable>> result = similarityFloodingAlgorithm.getResult();
+
+        HashMap<String, String> resultList = new HashMap<>();
+        for (Correspondence<SFTestMatchable, SFTestMatchable> correspondence : result.get()) {
+            resultList.put(correspondence.getFirstRecord().getValue(), correspondence.getSecondRecord().getValue());
+        }
+    }
+
     private HashMap<String, HashMap<String, Double>> getResultMap(SimilarityFloodingAlgorithm<SFTestMatchable, SFTestMatchable> similarityFloodingAlgorithm) {
         SimpleDirectedGraph<IPGNode<SFTestMatchable>, CoeffEdge> ipg = similarityFloodingAlgorithm.getIpg();
         List<IPGNode<SFTestMatchable>> ipgList = new ArrayList<>(ipg.vertexSet());
